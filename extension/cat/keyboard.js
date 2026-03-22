@@ -7,53 +7,58 @@
     apply(proto) {
 
       proto.initKeyboard = function () {
-        this.is67Active = false;
-        this.savedSprite = null;
-        this.keyTimeout = null;
+        this._67active = false;
+        this._67timeout = null;
+        this._67savedAction = null;
 
-        document.addEventListener('keydown', (e) => this.onKeyPress(e));
+        document.addEventListener('keydown', (e) => {
+          const a = this.currentAction;
+          if (a === 'needy' || a === 'hissing' || a === 'attacking') return;
+
+          if (e.key === '6') {
+            this._trigger67('67');
+          } else if (e.key === '7') {
+            this._trigger67('67-mirrored');
+          }
+        });
       };
 
-      proto.onKeyPress = function (e) {
-        // Block only attacking state (cursor-following)
-        if (this.currentAction === 'attacking') return;
-
-        if (e.key === '6') {
-          this.trigger67Animation('67');
-        } else if (e.key === '7') {
-          this.trigger67Animation('67-mirrored');
-        }
-      };
-
-      proto.trigger67Animation = function (spriteName) {
-        // Save current sprite if not already in 67 mode
-        if (!this.is67Active) {
-          this.savedSprite = this.sprite.className;
-          // Pause walking if active
+      proto._trigger67 = function (spriteName) {
+        if (!this._67active) {
+          this._67savedAction = this.currentAction;
+          // Pause current animation frame loop
           if (this.frameId) {
             cancelAnimationFrame(this.frameId);
             this.frameId = null;
           }
         }
 
-        this.is67Active = true;
+        this._67active = true;
         this.setSprite(spriteName);
-        this.showBubble('67');
+        this.showBubble('67!');
 
-        // Clear any existing timeout
-        clearTimeout(this.keyTimeout);
+        clearTimeout(this._67timeout);
 
-        // Return to normal after 1.5 seconds of no key press
-        this.keyTimeout = setTimeout(() => {
-          this.is67Active = false;
-          if (this.savedSprite) {
-            this.sprite.className = this.savedSprite;
-            this.savedSprite = null;
-          }
+        // Return to normal after 1.5s of no key press
+        this._67timeout = setTimeout(() => {
+          this._67active = false;
           this.hideBubble();
-          // Resume walking if that was the state
-          if (this.currentAction === 'walking' && this.walkLoop) {
+
+          // Resume the animation loop for the current state
+          const action = this._67savedAction;
+          this._67savedAction = null;
+
+          if (action === 'walking') {
             this.walkLoop();
+          } else if (action === 'needy' || action === 'hissing' || action === 'attacking') {
+            this._chaseLoop();
+          } else {
+            // Re-apply current state sprite
+            chrome.storage.local.get(['catState'], (data) => {
+              if (data.catState) {
+                this.setSprite(data.catState.sprite, data.catState.animStart, data.catState.spriteFrame);
+              }
+            });
           }
         }, 1500);
       };

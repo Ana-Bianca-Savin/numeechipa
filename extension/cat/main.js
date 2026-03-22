@@ -21,6 +21,8 @@
       this.createDOM();
       this.bindEvents();
 
+      if (this.initKeyboard) this.initKeyboard();
+
       // Connect to background to keep service worker alive
       this.port = chrome.runtime.connect({ name: 'cat-keepalive' });
 
