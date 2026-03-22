@@ -123,6 +123,29 @@ document.addEventListener('DOMContentLoaded', () => {
     catFaceEl.textContent = face;
   });
 
+  // ── Extra cats ──
+  const catCountEl = document.getElementById('catCount');
+  const catPlus = document.getElementById('catPlus');
+  const catMinus = document.getElementById('catMinus');
+
+  chrome.storage.local.get(['extraCatCount'], (data) => {
+    catCountEl.textContent = data.extraCatCount || 0;
+  });
+
+  catPlus.addEventListener('click', () => {
+    const current = parseInt(catCountEl.textContent) || 0;
+    const next = Math.min(current + 1, 100);
+    catCountEl.textContent = next;
+    chrome.storage.local.set({ extraCatCount: next });
+  });
+
+  catMinus.addEventListener('click', () => {
+    const current = parseInt(catCountEl.textContent) || 0;
+    const next = Math.max(current - 1, 0);
+    catCountEl.textContent = next;
+    chrome.storage.local.set({ extraCatCount: next });
+  });
+
   // ── Summon button ──
   summonBtn.addEventListener('click', () => {
     chrome.runtime.sendMessage({ type: 'summon' });

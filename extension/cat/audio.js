@@ -28,7 +28,6 @@
   // Cache for audio elements
   const audioCache = {};
 
-  // Get or create audio element
   function getAudio(name) {
     if (!audioCache[name] && AUDIO_FILES[name]) {
       audioCache[name] = new Audio(chrome.runtime.getURL(AUDIO_FILES[name]));
@@ -37,7 +36,7 @@
     return audioCache[name];
   }
 
-  // Message to sound mapping (must match config.js MESSAGES exactly)
+  // Message to sound mapping (matches config.js MESSAGES)
   const MESSAGE_SOUNDS = {
     // idle
     'mrrp?': 'mrr',
@@ -102,7 +101,6 @@
     '67!': '67',
   };
 
-  // Sounds that should not restart if already playing
   const NO_RESTART_SOUNDS = ['67'];
 
   // Unlock audio on first user interaction
@@ -116,6 +114,25 @@
   document.addEventListener('click', unlockAudio);
   document.addEventListener('keydown', unlockAudio);
 
+  function playSound(soundName) {
+    if (!audioUnlocked) return;
+    const sound = getAudio(soundName);
+    if (sound) {
+      if (NO_RESTART_SOUNDS.includes(soundName) && !sound.paused) return;
+      sound.currentTime = 0;
+      sound.play().catch(() => {});
+    }
+  }
+
+  function playMessageSound(text) {
+    const soundName = MESSAGE_SOUNDS[text];
+    if (soundName) playSound(soundName);
+  }
+
+  // Expose globally so ExtraCat can use it
+  C.playMessageSound = playMessageSound;
+  C.playSound = playSound;
+
   C.behaviors.push({
     name: 'audio',
     apply(proto) {
@@ -123,17 +140,7 @@
       proto._hissTimeout = null;
 
       proto.playSound = function (soundName) {
-        if (!audioUnlocked) return;
-
-        const sound = getAudio(soundName);
-        if (sound) {
-          // Don't restart certain sounds if already playing
-          if (NO_RESTART_SOUNDS.includes(soundName) && !sound.paused) {
-            return;
-          }
-          sound.currentTime = 0;
-          sound.play().catch(() => {});
-        }
+        playSound(soundName);
       };
 
       // Hook into setSprite to detect hiss animation
@@ -141,13 +148,11 @@
       proto.setSprite = function (name, animStart, spriteFrame) {
         if (origSetSprite) origSetSprite.call(this, name, animStart, spriteFrame);
 
-        // Clear any pending hiss sound
         clearTimeout(this._hissTimeout);
 
-        // If hiss sprite, schedule hiss sound (will be cancelled if text appears)
         if (name === 'hiss') {
           this._hissTimeout = setTimeout(() => {
-            this.playSound('hiss');
+            playSound('hiss');
           }, 100);
         }
       };
@@ -156,15 +161,8 @@
       const origShowBubble = proto.showBubble;
       proto.showBubble = function (text) {
         if (origShowBubble) origShowBubble.call(this, text);
-
-        // Cancel pending hiss sound if text appears
         clearTimeout(this._hissTimeout);
-
-        // Check if this message has a sound
-        const soundName = MESSAGE_SOUNDS[text];
-        if (soundName) {
-          this.playSound(soundName);
-        }
+        playMessageSound(text);
       };
 
     }
