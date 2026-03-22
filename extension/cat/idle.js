@@ -7,8 +7,8 @@
     apply(proto) {
 
       proto.enter_idle = function () {
-        if (Math.random() < 0.3) {
-          setTimeout(() => this.showBubble(this.pick(C.MESSAGES.idle)), 500);
+        if (Math.random() < C.TUNING.idleBubbleChance) {
+          setTimeout(() => this.showBubble(this.pick(C.MESSAGES.idle)), C.TUNING.idleBubbleDelay);
         }
       };
 

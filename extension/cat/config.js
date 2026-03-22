@@ -143,10 +143,44 @@
     sleep:  ['zzz...', '*snore*', 'z..z..'],
   };
 
+  // ── Tuning constants (content-side) ────────────────────────────────
+  const TUNING = {
+    // ── Bubbles ──
+    bubbleDuration: 3000,           // how long speech bubbles stay visible (ms)
+
+    // ── Idle ──
+    idleBubbleChance: 0.3,          // probability of showing a bubble in idle
+    idleBubbleDelay: 500,           // delay before idle bubble appears (ms)
+
+    // ── Activities ──
+    sleepBubbleChance: 0.5,         // probability of showing sleep bubble
+    sleepBubbleDelay: 800,          // delay before sleep bubble appears (ms)
+
+    // ── Chase (gradual speed ramp) ──
+    chaseBaseSpeed: 1.0,            // starting speed (px/frame)
+    chaseSpeedRamp: 0.05,           // speed increase per second of attention
+    chaseMaxSpeed: 6,               // speed cap (px/frame)
+    chaseNeedyMult: 1.0,            // speed multiplier in needy state
+    chaseHissMult: 1.6,             // speed multiplier in hissing state
+    chaseAttackMult: 2.2,           // speed multiplier in attacking state
+    chaseFrustrationTime: 7000,     // chase this long without catching → frustration pause (ms)
+    chaseSitMin: 3000,              // min sit duration after catch or frustration (ms)
+    chaseSitMax: 5000,              // max sit duration (ms)
+    chaseAttackResumeDelay: 600,    // in attacking: resume chase this fast after mouse escapes (ms)
+    chasePosReportInterval: 500,    // how often to sync position to background (ms)
+
+    // ── Petting ──
+    petDebounce: 100,               // min time between pet registrations (ms)
+    happyHeartCount: 5,             // hearts spawned when cat becomes happy
+    happyHeartInterval: 200,        // delay between heart spawns (ms)
+    heartDuration: 1000,            // how long hearts float before removal (ms)
+    heartOffsetY: -10,              // vertical offset for heart spawn position (px)
+  };
+
   // ── Export ─────────────────────────────────────────────────────────
   window.CAT = {
     FW, FH, SCALE, DW, DH,
-    SPRITES, STYLES, MESSAGES,
+    SPRITES, STYLES, MESSAGES, TUNING,
     behaviors: [],
   };
 })();

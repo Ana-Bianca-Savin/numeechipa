@@ -10,17 +10,16 @@
     constructor() {
       this.currentAction = null;
       this.catX = 300;
-      this.catY = 0;
+      this.catY = window.innerHeight - DH;
       this.frameId = null;
       this.bubbleTimer = null;
 
       this.mouseX = window.innerWidth / 2;
       this.mouseY = window.innerHeight / 2;
+      this.lastPetTime = 0;
 
       this.createDOM();
       this.bindEvents();
-
-      this.catY = window.innerHeight - DH;
 
       // Connect to background to keep service worker alive
       this.port = chrome.runtime.connect({ name: 'cat-keepalive' });
@@ -51,21 +50,25 @@
       const exitFn = this['exit_' + oldAction];
       if (exitFn) exitFn.call(this);
 
-      // Update position from state (walk/attack compute it locally)
-      if (newAction !== 'walking' && newAction !== 'attacking') {
+      // Position: skip on local→local transitions (preserves chase position)
+      const localStates = ['walking', 'needy', 'hissing', 'attacking'];
+      const wasLocal = localStates.includes(oldAction);
+      const isLocal = localStates.includes(newAction);
+
+      if (!(isLocal && wasLocal)) {
         if (s.catX != null) {
           this.catX = Math.max(0, Math.min(window.innerWidth - DW, s.catX));
         }
-        this.catY = window.innerHeight - DH;
+        if (s.catY != null) {
+          this.catY = Math.max(0, Math.min(window.innerHeight - DH, s.catY));
+        }
         this.updatePosition();
       }
 
       this.currentAction = newAction;
 
-      // Set sprite with animation sync (walk overrides in enter handler)
-      if (newAction !== 'walking') {
-        this.setSprite(s.sprite, s.animStart);
-      }
+      // Sprite: always set from state (enter functions may override)
+      this.setSprite(s.sprite, s.animStart, s.spriteFrame);
 
       // Enter new state
       const enterFn = this['enter_' + newAction];
@@ -128,22 +131,37 @@
 
       window.addEventListener('resize', () => {
         if (this.currentAction !== 'attacking') {
-          this.catY = window.innerHeight - DH;
           this.catX = Math.max(0, Math.min(window.innerWidth - DW, this.catX));
+          this.catY = Math.max(0, Math.min(window.innerHeight - DH, this.catY));
           this.updatePosition();
         }
       });
     }
 
     // ── Helpers ──────────────────────────────────────────────────────
-    setSprite(name, animStart) {
-      // Sync animation frame across tabs using animation-delay
+    setSprite(name, animStart, frame) {
+      if (frame != null) {
+        // Static single frame — no animation
+        const info = C.SPRITES[name];
+        if (info) {
+          this.sprite.style.backgroundImage = "url('" + info.url + "')";
+          this.sprite.style.backgroundSize = (info.frames * DW) + 'px ' + DH + 'px';
+          this.sprite.style.backgroundPosition = -(frame * DW) + 'px 0';
+          this.sprite.style.animationDelay = '0s';
+          this.sprite.className = 'sprite';  // no animation class
+          return;
+        }
+      }
+      // Animated sprite
       if (animStart) {
         const offset = (Date.now() - animStart) / 1000;
         this.sprite.style.animationDelay = -offset + 's';
       } else {
         this.sprite.style.animationDelay = '0s';
       }
+      this.sprite.style.backgroundImage = '';
+      this.sprite.style.backgroundSize = '';
+      this.sprite.style.backgroundPosition = '';
       this.sprite.className = 'sprite sprite-' + name;
     }
 
@@ -156,7 +174,7 @@
       this.bubble.textContent = text;
       this.bubble.classList.add('show');
       clearTimeout(this.bubbleTimer);
-      this.bubbleTimer = setTimeout(() => this.hideBubble(), 3000);
+      this.bubbleTimer = setTimeout(() => this.hideBubble(), C.TUNING.bubbleDuration);
     }
 
     hideBubble() { this.bubble.classList.remove('show'); }

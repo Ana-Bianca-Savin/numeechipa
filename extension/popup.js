@@ -8,20 +8,32 @@ document.addEventListener('DOMContentLoaded', () => {
   const cfgMin = document.getElementById('cfgMin');
   const cfgMax = document.getElementById('cfgMax');
   const cfgDemand = document.getElementById('cfgDemand');
+  const cfgPets = document.getElementById('cfgPets');
+  const cfgHappy = document.getElementById('cfgHappy');
+  const cfgIdleMin = document.getElementById('cfgIdleMin');
+  const cfgIdleMax = document.getElementById('cfgIdleMax');
+  const cfgWalkMin = document.getElementById('cfgWalkMin');
+  const cfgWalkMax = document.getElementById('cfgWalkMax');
 
-  // ── Presets (values in seconds) ──
+  // ── Presets (values in seconds, except petsNeeded and walkSpeed) ──
   const PRESETS = {
-    test:   { min: 3,   max: 8,   demand: 4  },
-    normal: { min: 60,  max: 180, demand: 10 },
-    chill:  { min: 300, max: 600, demand: 15 },
+    test:   { min: 5,   max: 15,  demand: 4,  pets: 2, happy: 3, idleMin: 2,  idleMax: 5,  walkMin: 1,   walkMax: 2 },
+    normal: { min: 30,  max: 90,  demand: 6,  pets: 3, happy: 4, idleMin: 5,  idleMax: 15, walkMin: 0.8, walkMax: 1.5 },
+    chill:  { min: 120, max: 300, demand: 10, pets: 3, happy: 5, idleMin: 10, idleMax: 30, walkMin: 0.5, walkMax: 1 },
   };
 
   // ── Load existing config into inputs ──
   chrome.storage.local.get(['catConfig'], (data) => {
-    const c = data.catConfig || { appearMinDelay: 3000, appearMaxDelay: 8000, demandDelay: 4000 };
-    cfgMin.value = Math.round(c.appearMinDelay / 1000);
-    cfgMax.value = Math.round(c.appearMaxDelay / 1000);
-    cfgDemand.value = Math.round(c.demandDelay / 1000);
+    const c = data.catConfig || {};
+    cfgMin.value     = Math.round((c.appearMinDelay || 30000) / 1000);
+    cfgMax.value     = Math.round((c.appearMaxDelay || 90000) / 1000);
+    cfgDemand.value  = Math.round((c.demandDelay || 6000) / 1000);
+    cfgPets.value    = c.petsNeeded || 3;
+    cfgHappy.value   = Math.round((c.happyDuration || 4000) / 1000);
+    cfgIdleMin.value = Math.round((c.idleMinDelay || 5000) / 1000);
+    cfgIdleMax.value = Math.round((c.idleMaxDelay || 15000) / 1000);
+    cfgWalkMin.value = c.walkMinSpeed || 0.8;
+    cfgWalkMax.value = c.walkMaxSpeed || 1.5;
   });
 
   // ── Save config ──
@@ -30,11 +42,25 @@ document.addEventListener('DOMContentLoaded', () => {
       appearMinDelay: Math.max(1, parseInt(cfgMin.value) || 3) * 1000,
       appearMaxDelay: Math.max(1, parseInt(cfgMax.value) || 8) * 1000,
       demandDelay:    Math.max(1, parseInt(cfgDemand.value) || 4) * 1000,
+      petsNeeded:     Math.max(1, parseInt(cfgPets.value) || 3),
+      happyDuration:  Math.max(1, parseInt(cfgHappy.value) || 3) * 1000,
+      idleMinDelay:   Math.max(1, parseInt(cfgIdleMin.value) || 2) * 1000,
+      idleMaxDelay:   Math.max(1, parseInt(cfgIdleMax.value) || 6) * 1000,
+      walkMinSpeed:   Math.max(0.5, parseFloat(cfgWalkMin.value) || 1.5),
+      walkMaxSpeed:   Math.max(0.5, parseFloat(cfgWalkMax.value) || 3.0),
     };
     // Ensure min <= max
     if (config.appearMinDelay > config.appearMaxDelay) {
       config.appearMaxDelay = config.appearMinDelay;
       cfgMax.value = cfgMin.value;
+    }
+    if (config.idleMinDelay > config.idleMaxDelay) {
+      config.idleMaxDelay = config.idleMinDelay;
+      cfgIdleMax.value = cfgIdleMin.value;
+    }
+    if (config.walkMinSpeed > config.walkMaxSpeed) {
+      config.walkMaxSpeed = config.walkMinSpeed;
+      cfgWalkMax.value = cfgWalkMin.value;
     }
     chrome.storage.local.set({ catConfig: config });
     return config;
@@ -58,6 +84,12 @@ document.addEventListener('DOMContentLoaded', () => {
       cfgMin.value = p.min;
       cfgMax.value = p.max;
       cfgDemand.value = p.demand;
+      cfgPets.value = p.pets;
+      cfgHappy.value = p.happy;
+      cfgIdleMin.value = p.idleMin;
+      cfgIdleMax.value = p.idleMax;
+      cfgWalkMin.value = p.walkMin;
+      cfgWalkMax.value = p.walkMax;
       saveConfig();
 
       // Flash feedback

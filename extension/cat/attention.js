@@ -6,48 +6,129 @@
     name: 'attention',
     apply(proto) {
 
-      proto.enter_needy = function () {
-        this.showBubble(this.pick(C.MESSAGES.needy));
-      };
+      // ── Shared chase state factory ──
+      function makeChaseState(action, speedMult, sitSprite, messages) {
+        proto['enter_' + action] = function () {
+          this.showBubble(this.pick(messages));
+          this._chaseSpeedMult = speedMult;
+          this._chaseSitSprite = sitSprite;
+          this._chaseSitting = false;
+          this._chaseSitUntil = 0;
+          this._lastPosReport = 0;
 
-      proto.enter_hissing = function () {
-        this.showBubble(this.pick(C.MESSAGES.angry));
-      };
+          // Track when chasing started (globally, across escalation states)
+          if (!this._chaseGlobalStart) {
+            this._chaseGlobalStart = Date.now();
+          }
+          // Track continuous chase time for frustration mechanic
+          this._chaseRunStart = Date.now();
 
-      proto.enter_attacking = function (state) {
-        if (state.catX != null) {
-          this.catX = Math.max(0, Math.min(window.innerWidth - C.DW, state.catX));
-        }
-        this.catY = window.innerHeight - C.DH;
-        this.updatePosition();
+          this._chaseLoop();
+        };
 
-        this.overlay.classList.add('active');
-        this.showBubble(this.pick(C.MESSAGES.attack));
-        this.attackLoop();
-      };
+        proto['exit_' + action] = function () {
+          if (this.frameId) { cancelAnimationFrame(this.frameId); this.frameId = null; }
+        };
+      }
 
-      proto.exit_attacking = function () {
-        this.overlay.classList.remove('active');
-        if (this.frameId) { cancelAnimationFrame(this.frameId); this.frameId = null; }
-      };
+      // ── Chase loop (shared by all 3 states) ──
+      proto._chaseLoop = function () {
+        const action = this.currentAction;
+        if (action !== 'needy' && action !== 'hissing' && action !== 'attacking') return;
 
-      proto.attackLoop = function () {
-        if (this.currentAction !== 'attacking') return;
-
+        const now = Date.now();
         const catCX = this.catX + C.DW / 2;
         const catCY = this.catY + C.DH / 2;
         const dx = this.mouseX - catCX;
         const dy = this.mouseY - catCY;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist > 10) {
-          this.catX += dx * 0.08;
-          this.catY += dy * 0.08;
+        // Gradual speed ramp based on total chase time, multiplied by state escalation
+        const totalChaseTime = (now - (this._chaseGlobalStart || now)) / 1000;
+        const mult = this._chaseSpeedMult || 1.0;
+        const speed = Math.min(
+          (C.TUNING.chaseBaseSpeed + totalChaseTime * C.TUNING.chaseSpeedRamp) * mult,
+          C.TUNING.chaseMaxSpeed
+        );
+
+        // Still in sit cooldown — stay put (but in attacking, resume sooner if mouse escapes)
+        if (this._chaseSitting && now < this._chaseSitUntil) {
+          if (action === 'attacking' && dist > C.DW) {
+            // Mouse moved away — track when it escaped
+            if (!this._mouseEscapedAt) {
+              this._mouseEscapedAt = now;
+            } else if (now - this._mouseEscapedAt >= C.TUNING.chaseAttackResumeDelay) {
+              // Waited long enough, resume chasing now
+              this._chaseSitting = false;
+              this._chaseRunStart = now;
+              this._mouseEscapedAt = null;
+            }
+          } else {
+            this._mouseEscapedAt = null;
+          }
+        } else if (this._chaseSitting && now >= this._chaseSitUntil) {
+          this._mouseEscapedAt = null;
+          // Sit cooldown ended — resume chasing
+          this._chaseSitting = false;
+          this._chaseRunStart = now;
+        } else if (dist > speed) {
+          // Frustration: chasing too long without catching
+          const chaseRunElapsed = now - (this._chaseRunStart || now);
+          if (chaseRunElapsed > C.TUNING.chaseFrustrationTime) {
+            // Stop, show hiss, sit 3-5s, then resume
+            this._chaseSitting = true;
+            const sitDuration = C.TUNING.chaseSitMin +
+              Math.random() * (C.TUNING.chaseSitMax - C.TUNING.chaseSitMin);
+            this._chaseSitUntil = now + sitDuration;
+            this.setSprite('hiss');
+            this.showBubble(this.pick(C.MESSAGES.angry));
+          } else {
+            // Chase — walk toward cursor at gradual speed
+            this.catX += (dx / dist) * speed;
+            this.catY += (dy / dist) * speed;
+
+            if (Math.abs(dx) >= Math.abs(dy)) {
+              this.setSprite(dx > 0 ? 'walk-right' : 'walk-left');
+            } else {
+              this.setSprite(dy > 0 ? 'walk-down' : 'walk-up');
+            }
+          }
+        } else {
+          // Caught the cursor — snap center onto it
+          this.catX = this.mouseX - C.DW / 2;
+          this.catY = this.mouseY - C.DH / 2;
+
+          if (!this._chaseSitting) {
+            this._chaseSitting = true;
+            const sitDuration = C.TUNING.chaseSitMin +
+              Math.random() * (C.TUNING.chaseSitMax - C.TUNING.chaseSitMin);
+            this._chaseSitUntil = now + sitDuration;
+            this.setSprite(this._chaseSitSprite);
+          }
         }
 
         this.updatePosition();
-        this.frameId = requestAnimationFrame(() => this.attackLoop());
+
+        // Report position to background periodically
+        if (now - this._lastPosReport > C.TUNING.chasePosReportInterval) {
+          this._lastPosReport = now;
+          chrome.runtime.sendMessage({ type: 'updatePos', catX: this.catX, catY: this.catY });
+        }
+
+        this.frameId = requestAnimationFrame(() => this._chaseLoop());
       };
+
+      // ── Clear global chase timer when cat is satisfied ──
+      const origExit = proto.exit_happy;
+      proto.exit_happy = function () {
+        this._chaseGlobalStart = null;
+        if (origExit) origExit.call(this);
+      };
+
+      // ── Register all 3 escalation states ──
+      makeChaseState('needy',     C.TUNING.chaseNeedyMult,  'meow', C.MESSAGES.needy);
+      makeChaseState('hissing',   C.TUNING.chaseHissMult,   'hiss', C.MESSAGES.angry);
+      makeChaseState('attacking', C.TUNING.chaseAttackMult, 'paw',  C.MESSAGES.attack);
 
     }
   });

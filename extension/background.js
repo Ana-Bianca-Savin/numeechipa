@@ -15,21 +15,47 @@ let state = {
   action: 'idle',
   sprite: 'rest',
   catX: 300,
+  catY: 600,
   animStart: Date.now(),
   // walk params
   startX: 300,
-  walkTarget: 300,
+  startY: 600,
+  walkTargetX: 300,
+  walkTargetY: 600,
   walkSpeed: 2,
   // pet
   petCount: 0,
-  petsNeeded: 3,
+  petsNeeded: 3,        // runtime copy, synced from config
   totalPets: 0,
 };
 
 let config = {
-  attentionMinDelay: 3000,
-  attentionMaxDelay: 8000,
-  patienceDelay: 4000,
+  // ── Attention timing (ms) ──
+  attentionMinDelay: 30000,     // min time before cat demands attention (30s)
+  attentionMaxDelay: 90000,     // max time before cat demands attention (90s)
+  patienceDelay: 6000,          // time before needy→hissing (6s)
+  hissingDuration: 12000,       // time in hissing before escalating to attack (12s)
+
+  // ── Petting ──
+  petsNeeded: 3,                // clicks needed to satisfy the cat
+
+  // ── Idle behavior (ms) ──
+  idleMinDelay: 5000,           // min idle time before next activity (5s)
+  idleMaxDelay: 15000,          // max idle time before next activity (15s)
+
+  // ── Walking ──
+  walkMinSpeed: 0.8,            // min walk speed multiplier (slower)
+  walkMaxSpeed: 1.5,            // max walk speed multiplier
+  walkViewportWidth: 1400,      // assumed viewport width for walk targets
+  walkViewportHeight: 900,      // assumed viewport height for walk targets
+  walkMaxDuration: 20000,       // max walk time before forced stop (ms)
+
+  // ── Activities ──
+  sleepLoops: 8,                // animation loop count for sleep (longer naps)
+  activityLoops: 3,             // animation loop count for other activities
+
+  // ── Happy state (ms) ──
+  happyDuration: 4000,          // how long the cat stays happy after being satisfied
 };
 
 let idleTimer = null;
@@ -37,6 +63,7 @@ let activityTimer = null;
 let attentionTimer = null;
 let patienceTimer = null;
 let happyTimer = null;
+let ready = false;
 
 // ── Persistence ──────────────────────────────────────────────────────
 
@@ -48,9 +75,18 @@ async function loadState() {
   const data = await chrome.storage.local.get(['catState', 'catConfig']);
   if (data.catState) Object.assign(state, data.catState);
   if (data.catConfig) {
-    config.attentionMinDelay = data.catConfig.appearMinDelay || 3000;
-    config.attentionMaxDelay = data.catConfig.appearMaxDelay || 8000;
-    config.patienceDelay = data.catConfig.demandDelay || 4000;
+    const c = data.catConfig;
+    if (c.appearMinDelay != null)   config.attentionMinDelay = c.appearMinDelay;
+    if (c.appearMaxDelay != null)   config.attentionMaxDelay = c.appearMaxDelay;
+    if (c.demandDelay != null)      config.patienceDelay = c.demandDelay;
+    if (c.hissingDuration != null)  config.hissingDuration = c.hissingDuration;
+    if (c.petsNeeded != null)       config.petsNeeded = c.petsNeeded;
+    if (c.idleMinDelay != null)     config.idleMinDelay = c.idleMinDelay;
+    if (c.idleMaxDelay != null)     config.idleMaxDelay = c.idleMaxDelay;
+    if (c.walkMinSpeed != null)     config.walkMinSpeed = c.walkMinSpeed;
+    if (c.walkMaxSpeed != null)     config.walkMaxSpeed = c.walkMaxSpeed;
+    if (c.walkMaxDuration != null)  config.walkMaxDuration = c.walkMaxDuration;
+    if (c.happyDuration != null)    config.happyDuration = c.happyDuration;
   }
 }
 
@@ -59,50 +95,67 @@ async function loadState() {
 function enterIdle() {
   clearTimeout(idleTimer);
   clearTimeout(activityTimer);
+  clearTimeout(patienceTimer);
+  clearTimeout(happyTimer);
 
   state.action = 'idle';
   state.sprite = Math.random() < 0.5 ? 'rest' : 'sit';
+  // Pick a random static frame for rest/sit
+  const frames = SPRITE_INFO[state.sprite] ? SPRITE_INFO[state.sprite].frames : 6;
+  state.spriteFrame = Math.floor(Math.random() * frames);
   state.animStart = Date.now();
   // catX stays where it was
   saveState();
 
-  const delay = 2000 + Math.random() * 4000;
+  const delay = config.idleMinDelay + Math.random() * (config.idleMaxDelay - config.idleMinDelay);
   idleTimer = setTimeout(pickActivity, delay);
 }
 
 function pickActivity() {
   if (state.action !== 'idle') return;
 
-  const choices = ['walk', 'walk', 'walk', 'eat', 'wash', 'yawn', 'sleep', 'itch', 'sit'];
+  const choices = ['walk', 'walk', 'sit', 'sit', 'sit', 'sleep', 'sleep', 'sleep', 'eat', 'wash', 'yawn', 'itch'];
   const choice = choices[Math.floor(Math.random() * choices.length)];
 
   if (choice === 'walk') {
-    // Determine walk parameters (all tabs use these exact values)
+    // Determine 2D walk parameters (all tabs use these exact values)
     const margin = 96; // DW
-    const viewW = 1400; // assume reasonable width, clamped per tab
     state.startX = state.catX;
-    state.walkTarget = margin + Math.random() * (viewW - margin * 2);
-    state.walkSpeed = 1.5 + Math.random() * 1.5;
+    state.startY = state.catY;
+    state.walkTargetX = margin + Math.random() * (config.walkViewportWidth - margin * 2);
+    state.walkTargetY = margin + Math.random() * (config.walkViewportHeight - margin * 2);
+    state.walkSpeed = config.walkMinSpeed + Math.random() * (config.walkMaxSpeed - config.walkMinSpeed);
     state.action = 'walking';
-    state.sprite = state.walkTarget > state.catX ? 'walk-right' : 'walk-left';
+    state.spriteFrame = null;
+
+    // Pick sprite based on dominant direction
+    const dx = state.walkTargetX - state.catX;
+    const dy = state.walkTargetY - state.catY;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      state.sprite = dx > 0 ? 'walk-right' : 'walk-left';
+    } else {
+      state.sprite = dy > 0 ? 'walk-down' : 'walk-up';
+    }
     state.animStart = Date.now();
     saveState();
 
     // Max walk time fallback
     activityTimer = setTimeout(() => {
       if (state.action === 'walking') {
-        state.catX = state.walkTarget;
+        state.catX = state.walkTargetX;
+        state.catY = state.walkTargetY;
         enterIdle();
       }
-    }, 15000);
+    }, config.walkMaxDuration);
   } else {
     state.action = 'activity';
     state.sprite = choice;
+    state.spriteFrame = null;
     state.animStart = Date.now();
     saveState();
 
     const s = SPRITE_INFO[choice];
-    const loops = choice === 'sleep' ? 4 : 2;
+    const loops = choice === 'sleep' ? config.sleepLoops : config.activityLoops;
     const duration = s.frames * s.speed * loops * 1000;
     activityTimer = setTimeout(enterIdle, duration);
   }
@@ -124,12 +177,16 @@ function needAttention() {
 
   // If was walking, compute final position
   if (state.action === 'walking') {
-    state.catX = computeWalkX();
+    const pos = computeWalkPos();
+    state.catX = pos.x;
+    state.catY = pos.y;
   }
 
   state.action = 'needy';
   state.sprite = 'meow';
+  state.spriteFrame = null;
   state.petCount = 0;
+  state.petsNeeded = config.petsNeeded;
   state.animStart = Date.now();
   saveState();
 
@@ -140,30 +197,44 @@ function startHissing() {
   if (state.action !== 'needy') return;
   state.action = 'hissing';
   state.sprite = 'hiss';
+  state.spriteFrame = null;
   state.animStart = Date.now();
   saveState();
 
-  patienceTimer = setTimeout(startAttacking, config.patienceDelay);
+  patienceTimer = setTimeout(startAttacking, config.hissingDuration);
 }
 
 function startAttacking() {
   if (state.action !== 'hissing') return;
   state.action = 'attacking';
   state.sprite = 'paw';
+  state.spriteFrame = null;
   state.animStart = Date.now();
   saveState();
 }
 
-function handlePet(catX) {
+function handlePet(catX, catY) {
   state.totalPets++;
 
   if (catX != null) state.catX = catX;
+  if (catY != null) state.catY = catY;
 
   if (state.action === 'needy' || state.action === 'hissing' || state.action === 'attacking') {
     state.petCount++;
+
+    // Reset patience timer — don't escalate while being petted
+    clearTimeout(patienceTimer);
+
     if (state.petCount >= state.petsNeeded) {
       satisfy();
       return { ...state };
+    }
+
+    // Restart patience timer with fresh delay
+    if (state.action === 'needy') {
+      patienceTimer = setTimeout(startHissing, config.patienceDelay);
+    } else if (state.action === 'hissing') {
+      patienceTimer = setTimeout(startAttacking, config.hissingDuration);
     }
   }
 
@@ -176,6 +247,7 @@ function satisfy() {
 
   state.action = 'happy';
   state.sprite = 'sleep';
+  state.spriteFrame = null;
   state.petCount = 0;
   state.animStart = Date.now();
   saveState();
@@ -183,52 +255,83 @@ function satisfy() {
   happyTimer = setTimeout(() => {
     enterIdle();
     scheduleAttention();
-  }, 2500);
+  }, config.happyDuration);
 }
 
 // ── Walk position helper ─────────────────────────────────────────────
 
-function computeWalkX() {
+function computeWalkPos() {
   const elapsed = (Date.now() - state.animStart) / 1000;
   const speedPerSec = state.walkSpeed * 60;
-  const totalDist = state.walkTarget - state.startX;
-  const dir = Math.sign(totalDist);
-  const traveled = Math.min(speedPerSec * elapsed, Math.abs(totalDist));
-  return state.startX + dir * traveled;
+  const totalDX = state.walkTargetX - state.startX;
+  const totalDY = state.walkTargetY - state.startY;
+  const totalDist = Math.sqrt(totalDX * totalDX + totalDY * totalDY);
+  const traveled = Math.min(speedPerSec * elapsed, totalDist);
+  const ratio = totalDist > 0 ? traveled / totalDist : 1;
+  return {
+    x: state.startX + totalDX * ratio,
+    y: state.startY + totalDY * ratio,
+  };
 }
 
 // ── Messages ─────────────────────────────────────────────────────────
 
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+// Queue messages until state is loaded to prevent race condition
+const pendingMessages = [];
+
+function processMessage(msg, sendResponse) {
   if (msg.type === 'pet') {
-    const result = handlePet(msg.catX);
+    const result = handlePet(msg.catX, msg.catY);
     sendResponse(result);
-    return false;
+    return;
   }
 
   if (msg.type === 'walkDone') {
     if (state.action === 'walking') {
       clearTimeout(activityTimer);
-      state.catX = msg.catX != null ? msg.catX : computeWalkX();
+      if (msg.catX != null) {
+        state.catX = msg.catX;
+        state.catY = msg.catY != null ? msg.catY : state.catY;
+      } else {
+        const pos = computeWalkPos();
+        state.catX = pos.x;
+        state.catY = pos.y;
+      }
       enterIdle();
     }
-    return false;
+    return;
+  }
+
+  if (msg.type === 'updatePos') {
+    if (msg.catX != null) state.catX = msg.catX;
+    if (msg.catY != null) state.catY = msg.catY;
+    saveState();
+    return;
   }
 
   if (msg.type === 'summon') {
     needAttention();
-    return false;
+    return;
   }
 
   if (msg.type === 'getStats') {
     sendResponse({ totalPets: state.totalPets });
-    return false;
+    return;
   }
 
   if (msg.type === 'getState') {
     sendResponse({ ...state });
-    return false;
+    return;
   }
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (!ready) {
+    pendingMessages.push({ msg, sendResponse });
+    return true; // keep sendResponse channel open
+  }
+  processMessage(msg, sendResponse);
+  return false;
 });
 
 // ── Config live-reload ───────────────────────────────────────────────
@@ -236,9 +339,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.catConfig) {
     const c = changes.catConfig.newValue || {};
-    if (c.appearMinDelay != null) config.attentionMinDelay = c.appearMinDelay;
-    if (c.appearMaxDelay != null) config.attentionMaxDelay = c.appearMaxDelay;
-    if (c.demandDelay != null)    config.patienceDelay = c.demandDelay;
+    if (c.appearMinDelay != null)   config.attentionMinDelay = c.appearMinDelay;
+    if (c.appearMaxDelay != null)   config.attentionMaxDelay = c.appearMaxDelay;
+    if (c.demandDelay != null)      config.patienceDelay = c.demandDelay;
+    if (c.hissingDuration != null)  config.hissingDuration = c.hissingDuration;
+    if (c.petsNeeded != null)       config.petsNeeded = c.petsNeeded;
+    if (c.idleMinDelay != null)     config.idleMinDelay = c.idleMinDelay;
+    if (c.idleMaxDelay != null)     config.idleMaxDelay = c.idleMaxDelay;
+    if (c.walkMinSpeed != null)     config.walkMinSpeed = c.walkMinSpeed;
+    if (c.walkMaxSpeed != null)     config.walkMaxSpeed = c.walkMaxSpeed;
+    if (c.walkMaxDuration != null)  config.walkMaxDuration = c.walkMaxDuration;
+    if (c.happyDuration != null)    config.happyDuration = c.happyDuration;
   }
 });
 
@@ -250,15 +361,27 @@ chrome.runtime.onConnect.addListener(() => {});
 
 loadState().then(() => {
   if (['walking', 'activity', 'happy'].includes(state.action)) {
-    if (state.action === 'walking') state.catX = computeWalkX();
+    if (state.action === 'walking') {
+      const pos = computeWalkPos();
+      state.catX = pos.x;
+      state.catY = pos.y;
+    }
     enterIdle();
   } else if (state.action === 'idle') {
     enterIdle();
   } else if (state.action === 'needy') {
     patienceTimer = setTimeout(startHissing, config.patienceDelay);
   } else if (state.action === 'hissing') {
-    patienceTimer = setTimeout(startAttacking, config.patienceDelay);
+    patienceTimer = setTimeout(startAttacking, config.hissingDuration);
   }
   scheduleAttention();
+
+  // Flush any messages that arrived before state was loaded
+  ready = true;
+  for (const { msg, sendResponse } of pendingMessages) {
+    processMessage(msg, sendResponse);
+  }
+  pendingMessages.length = 0;
+
   console.log('[BrowserCat BG] Started, state:', state.action, 'x:', state.catX);
 });
