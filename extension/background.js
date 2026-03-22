@@ -25,7 +25,7 @@ let state = {
   walkSpeed: 2,
   // pet
   petCount: 0,
-  petsNeeded: 3,        // runtime copy, synced from config
+  petsNeeded: 6,        // runtime copy, synced from config
   totalPets: 0,
 };
 
