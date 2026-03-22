@@ -39,43 +39,64 @@
 
   // Message to sound mapping (must match config.js MESSAGES exactly)
   const MESSAGE_SOUNDS = {
-    // idle: ['*sits*', '*looks around*', 'Mrrp?', '~', '*stretch*']
-    'Mrrp?': 'mrr',
+    // idle
+    'mrrp?': 'mrr',
+    'prr...': 'purr',
 
-    // needy: ['Pet me!', 'Meow!', 'Hey!', 'Miau!', 'Notice me!', 'Mrrp?', 'Psst!']
-    'Pet me!': 'petme',
-    'Meow!': 'miau',
-    'Hey!': 'hey',
-    'Miau!': 'miau',
+    // walk
+    'mrrp': 'mrr',
 
-    // angry: ['PET ME!', 'MEOW!!', 'HEY!!', '*angry meow*', 'MIAU!', 'Acum!']
-    'PET ME!': 'petme',
+    // sit
+    '*purr*': 'purr',
+    'prr~': 'purr',
+
+    // sleep
+    'zzz...': 'snore',
+    '*snore*': 'snore',
+    'z..z..': 'snore',
+    'zzZZzz...': 'snore',
+
+    // needy
+    'meow!': 'miau',
+    'mew!': 'miau',
+    'miau!': 'miau',
+    'mrrow?': 'mrr',
+    'mew mew!': 'miau',
+    'prr?': 'purr',
+
+    // angry
     'MEOW!!': 'miau',
-    'HEY!!': 'hey',
-    'Acum!': 'acum',
+    'MRRROW!!': 'miau',
+    '*hisss*': 'hiss',
+    'MIAU!': 'miau',
+    'MEW!!': 'miau',
+    '*growl*': 'hiss',
+    'HSSS!': 'hiss',
 
-    // attack: ['*ATTACK*', 'MIAU!!!', '*paw paw*', 'PET. ME. NOW.']
-    '*ATTACK*': 'attack',
+    // attack
+    '*SCRATCH*': 'attack',
     'MIAU!!!': 'miau',
-    'PET. ME. NOW.': 'petmenow',
+    '*CHOMP*': 'attack',
+    '*BITE*': 'attack',
+    'HSSS!!': 'hiss',
+    'MRRROW!!!': 'miau',
 
-    // rageQuit: ['GOODBYE!', '*RAGE QUIT*', 'I\'m outta here!', 'Bye forever!', 'You had your chance!']
+    // rageQuit
     'GOODBYE!': 'goodbye',
     '*RAGE QUIT*': 'ragequit',
     "I'm outta here!": 'imout',
     'Bye forever!': 'byeforever',
     'You had your chance!': 'youhadyourchance',
 
-    // happy: ['Prrr~', '♥', 'Mrrr~', ':3']
-    'Prrr~': 'purr',
+    // happy
+    'prrr~': 'purr',
     '\u2665': 'purr',
-    'Mrrr~': 'mrr',
+    'mrrr~': 'mrr',
     ':3': 'purr',
-
-    // sleep: ['zzz...', '*snore*', 'z..z..']
-    'zzz...': 'snore',
-    '*snore*': 'snore',
-    'z..z..': 'snore',
+    '*purr purr*': 'purr',
+    '*nuzzle*': 'purr',
+    '*headbutt*': 'mrr',
+    'prrrr~': 'purr',
 
     // 67 keyboard trigger
     '67!': '67',
