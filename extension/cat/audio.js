@@ -81,7 +81,8 @@
     '67!': '67',
   };
 
-  const HISS_SPRITES = ['hiss'];
+  // Sounds that should not restart if already playing
+  const NO_RESTART_SOUNDS = ['67'];
 
   // Unlock audio on first user interaction
   function unlockAudio() {
@@ -98,28 +99,35 @@
     name: 'audio',
     apply(proto) {
 
-      proto.isHissing = false;
+      proto._hissTimeout = null;
 
       proto.playSound = function (soundName) {
         if (!audioUnlocked) return;
 
         const sound = getAudio(soundName);
         if (sound) {
+          // Don't restart certain sounds if already playing
+          if (NO_RESTART_SOUNDS.includes(soundName) && !sound.paused) {
+            return;
+          }
           sound.currentTime = 0;
           sound.play().catch(() => {});
         }
       };
 
-      // Hook into setSprite for hiss animation (checked first)
+      // Hook into setSprite to detect hiss animation
       const origSetSprite = proto.setSprite;
-      proto.setSprite = function (name, animStart) {
-        if (origSetSprite) origSetSprite.call(this, name, animStart);
+      proto.setSprite = function (name, animStart, spriteFrame) {
+        if (origSetSprite) origSetSprite.call(this, name, animStart, spriteFrame);
 
-        if (HISS_SPRITES.includes(name)) {
-          this.isHissing = true;
-          this.playSound('hiss');
-        } else {
-          this.isHissing = false;
+        // Clear any pending hiss sound
+        clearTimeout(this._hissTimeout);
+
+        // If hiss sprite, schedule hiss sound (will be cancelled if text appears)
+        if (name === 'hiss') {
+          this._hissTimeout = setTimeout(() => {
+            this.playSound('hiss');
+          }, 100);
         }
       };
 
@@ -128,8 +136,8 @@
       proto.showBubble = function (text) {
         if (origShowBubble) origShowBubble.call(this, text);
 
-        // Skip message sounds if hiss animation is active
-        if (this.isHissing) return;
+        // Cancel pending hiss sound if text appears
+        clearTimeout(this._hissTimeout);
 
         // Check if this message has a sound
         const soundName = MESSAGE_SOUNDS[text];
