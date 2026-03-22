@@ -29,13 +29,14 @@
         "cat/activities.js",
         "cat/attention.js",
         "cat/petting.js",
+        "cat/rage.js",
         "cat/keyboard.js",
         "cat/main.js"
       ],
       "run_at": "document_idle"
     }
   ],
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
   "web_accessible_resources": [
     {
       "resources": ["sprites/*.png"],

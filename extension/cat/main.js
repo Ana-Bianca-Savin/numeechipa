@@ -53,7 +53,7 @@
       if (exitFn) exitFn.call(this);
 
       // Update position from state (walk/attack compute it locally)
-      if (newAction !== 'walking' && newAction !== 'attacking') {
+      if (newAction !== 'walking' && newAction !== 'attacking' && newAction !== 'rageQuit') {
         if (s.catX != null) {
           this.catX = Math.max(0, Math.min(window.innerWidth - DW, s.catX));
         }
@@ -128,7 +128,7 @@
       });
 
       window.addEventListener('resize', () => {
-        if (this.currentAction !== 'attacking') {
+        if (this.currentAction !== 'attacking' && this.currentAction !== 'rageQuit') {
           this.catY = window.innerHeight - DH;
           this.catX = Math.max(0, Math.min(window.innerWidth - DW, this.catX));
           this.updatePosition();
