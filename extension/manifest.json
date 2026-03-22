@@ -22,7 +22,15 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "js": [
+        "cat/config.js",
+        "cat/idle.js",
+        "cat/walk.js",
+        "cat/activities.js",
+        "cat/attention.js",
+        "cat/petting.js",
+        "cat/main.js"
+      ],
       "run_at": "document_idle"
     }
   ],
