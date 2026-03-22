@@ -1,0 +1,332 @@
+================================================================================
+                         BROWSER CAT - DOCUMENTATIE PROIECT
+                      Extensie Chrome — Pisica Virtuala in Browser
+================================================================================
+
+
+================================================================================
+  1. CE ESTE BROWSER CAT?
+================================================================================
+
+Browser Cat este o extensie de Chrome care pune o pisica virtuala pe fiecare
+pagina web. Pisica se plimba, doarme, mananca, se spala si isi traieste viata
+pe ecranul tau. Dar are nevoie de atentie — daca o ignori prea mult, devine
+nervoasa, sufla, ataca si poate sa-ti inchida tab-ul.
+
+Ca sa o calmezi, trebuie sa dai click pe ea (sa o mangai). Dupa cateva
+mangaieri devine fericita, toarce si apar inimioare. Apoi ciclul se repeta.
+
+
+================================================================================
+  2. CUM FUNCTIONEAZA — PE SCURT
+================================================================================
+
+Extensia are doua parti:
+
+  Background-ul (creierul):
+    Decide ce face pisica: cand se plimba, cand doarme, cand cere atentie.
+    Functioneaza independent de tab-uri. Starea este unica si globala — pe
+    toate tab-urile apare aceeasi pisica in acelasi loc.
+
+  Content script-urile (ce vezi pe ecran):
+    Afiseaza pisica, animatiile, sunetele si bulele de dialog pe fiecare tab.
+    Nu iau decizii — doar reactioneaza la starea trimisa de background.
+
+  Popup-ul (setari):
+    Din iconita extensiei se deschide un meniu cu setari, statistici
+    si control pentru pisici suplimentare.
+
+
+================================================================================
+  3. CICLUL DE VIATA AL PISICII
+================================================================================
+
+Pisica trece prin urmatoarele stari:
+
+  IDLE (sta)
+    Pisica sta linistita. Dupa cateva secunde alege sa faca ceva:
+    se plimba, doarme, mananca, se spala, casca sau se scarpina.
+
+  WALKING (se plimba)
+    Se misca spre un punct aleator pe ecran. Poate merge in 4 directii.
+    Pisica e "lenesha" — se plimba des si sta putin.
+
+  ACTIVITATI (sleep, eat, wash, yawn, itch, sit)
+    Face o activitate cu animatie dedicata, apoi revine la idle.
+
+  NEEDY (cere atentie)
+    Dupa un timp fara mangaieri, pisica incepe sa te urmareasca.
+    Se misca spre cursorul mouse-ului si miauna.
+
+  HISSING (sufla)
+    Daca o ignori in continuare, devine nervoasa si sufla.
+    Se misca mai repede (1.6x).
+
+  ATTACKING (ataca)
+    Daca tot o ignori, trece la atac — da cu labele si se misca
+    si mai repede (2.2x). Daca te prinde, incepe un countdown.
+
+  COUNTDOWN (5 secunde)
+    Apare un numar rosu mare pe ecran care numara de la 5 la 0.
+    Daca misti mouse-ul — countdown-ul se anuleaza.
+    Daca ajunge la 0 — tab-ul se inchide.
+
+  HAPPY (fericita)
+    Dupa suficiente mangaieri (default 3 click-uri), pisica toarce,
+    apar inimioare si e fericita cateva secunde. Apoi revine la idle.
+
+
+================================================================================
+  4. MECANICA DE URMARIRE
+================================================================================
+
+Cand pisica cere atentie, urmareste cursorul mouse-ului:
+
+  - Viteza creste treptat in timp — cu cat o ignori mai mult, cu atat
+    e mai rapida.
+  - Fiecare nivel de escaladare are un multiplicator de viteza:
+      Needy:    viteza normala
+      Hissing:  de 1.6 ori mai rapida
+      Attacking: de 2.2 ori mai rapida
+
+  - Daca pisica alearga prea mult fara sa te prinda, se frustreaza:
+    se opreste, sufla si sta cateva secunde inainte sa reia urmarirea.
+
+  - Cand te prinde, sta langa cursor 3-5 secunde.
+    In starea de atac, daca stai pe loc incepe countdown-ul.
+    Daca misti mouse-ul, pisica reia urmarirea foarte repede (sub 1 secunda).
+
+
+================================================================================
+  5. COUNTDOWN SI INCHIDEREA TAB-ULUI
+================================================================================
+
+Cand pisica in starea ATTACKING iti prinde cursorul:
+
+  1. Asteapta 1 secunda
+  2. Apare un cub negru-rosu in centrul ecranului
+  3. Numara: 5... 4... 3... 2... 1... 0
+  4. Daca misti mouse-ul in timp → countdown anulat, pisica reia urmarirea
+  5. Daca ajunge la 0 → tab-ul se inchide
+
+  Dupa inchiderea tab-ului, pisica revine direct la idle pe celelalte
+  tab-uri (nu trece prin happy, ca sa nu creeze un loop infinit).
+
+  Orice pisica de pe ecran (principala sau extra) poate declansa
+  countdown-ul si inchide tab-ul.
+
+
+================================================================================
+  6. PETTING (MANGAIEREA)
+================================================================================
+
+  - Click pe pisica = o mangaiere
+  - La fiecare mangaiere apare o inima animata deasupra pisicii
+  - Pisica afiseaza un mesaj fericit
+  - Mangaierea reseteaza timer-ul de escaladare (nu mai trece la
+    nivelul urmator de nervi cat timp o mangai)
+  - Dupa 3 mangaieri (configurabil) pisica devine HAPPY:
+      Toarce (animatie de tremurat)
+      Apar 5 inimioare
+      Dupa 4 secunde revine la idle
+
+
+================================================================================
+  7. PISICI SUPLIMENTARE
+================================================================================
+
+Din popup se pot adauga pana la 100 de pisici extra pe ecran.
+
+  - Fiecare pisica extra se comporta identic cu cea principala
+  - Se plimba independent, fac activitati, dorm, mananca
+  - Cand pisica principala devine nervoasa (needy/hissing/attacking),
+    TOATE pisicile extra devin si ele nervoase si urmaresc cursorul
+  - Oricare pisica poate fi mangaiata (click pe ea)
+  - Oricare pisica poate declansa countdown-ul si inchide tab-ul
+  - Cand pisica principala e fericita, toate sunt fericite
+  - Cand se calmeaza, toate se calmeaza
+  - Numarul de pisici se sincronizeaza instant pe toate tab-urile
+
+
+================================================================================
+  8. ANIMATII SI SPRITE-URI
+================================================================================
+
+Pisica are 16 animatii diferite, fiecare cu sprite sheet propriu:
+
+  rest          — sta linistita (6 cadre)
+  sit           — sezut (6 cadre)
+  walk (4 dir.) — mers dreapta/stanga/sus/jos (4-8 cadre)
+  sleep         — doarme (2 cadre)
+  eat           — mananca (8 cadre)
+  wash          — se spala (9 cadre)
+  yawn          — casca (8 cadre)
+  itch          — se scarpina (11 cadre)
+  meow          — miauna / cere atentie (3 cadre)
+  hiss          — sufla nervos (2 cadre)
+  paw           — ataca cu labele (9 cadre)
+  67 / 67-mir.  — easter egg (2 cadre)
+
+  Dimensiune pe ecran: 96x96 pixeli (32x32 scalate de 3 ori).
+  In idle, pisica afiseaza un singur cadru aleator (nu se misca).
+
+
+================================================================================
+  9. SUNET
+================================================================================
+
+Extensia are 16 efecte sonore in format .ogg:
+
+  miau      — miaunit (cand cere atentie sau e nervoasa)
+  hiss      — suflat (cand e nervoasa)
+  purr      — toarcere (cand e fericita sau relaxata)
+  attack    — zgomot de atac (cand zgarie/musca)
+  mrr       — mormait (idle, walk)
+  snore     — sforait (cand doarme)
+  ragequit  — usa trantita (la ragequit)
+  67        — sunet easter egg
+
+  + 8 sunete bonus: goodbye, hey, imout, petmenow, youhadyourchance,
+    acum, petme, byeforever
+
+  Fiecare mesaj afisat in bubble declanseaza automat sunetul potrivit.
+  Sunetul se deblocheaza dupa prima interactiune cu pagina (click/tasta).
+  Volum: 50%.
+
+
+================================================================================
+  10. MESAJELE PISICII
+================================================================================
+
+Pisica comunica prin sunete de pisica, nu vorbire umana:
+
+  Cand sta:     mrrp?, prr..., *blink*, *tail flick*, *sniff*
+  Cand merge:   *sniff sniff*, *pat pat*, mrrp, *tip tap*
+  Cand doarme:  zzz..., *snore*, zzZZzz...
+  Cand mananca: *nom nom*, *munch*, *chomp*, *crunch*
+  Cand se spala: *lick lick*, *grooming*, *wash wash*
+
+  Cand cere atentie: meow!, mew!, miau!, mrrow?, mew mew!
+  Cand e nervoasa:   MEOW!!, *hisss*, *growl*, HSSS!
+  Cand ataca:        *SCRATCH*, *CHOMP*, *BITE*, MRRROW!!!
+  La ragequit:       *HISS*, *ANGRY MEOW*, *door slam*
+  Cand e fericita:   prrr~, mrrr~, :3, *purr purr*, *nuzzle*, *headbutt*
+
+
+================================================================================
+  11. SETARI DIN POPUP
+================================================================================
+
+Popup-ul (click pe iconita extensiei) ofera:
+
+  STATISTICI:
+    - Total mangaieri date
+    - Dispozitia pisicii (Lonely / Content / Happy / Joyful / Ecstatic)
+    - Bara de fericire vizuala
+
+  PRESETURI RAPIDE:
+    Testing  — pisica cere atentie dupa 5-15 secunde (pentru testare)
+    Normal   — cere atentie dupa 30-90 secunde
+    Chill    — cere atentie dupa 2-5 minute
+
+  SETARI INDIVIDUALE:
+    - Cat timp pana cere atentie (min/max)
+    - Cat timp are rabdare inainte sa escaladeze
+    - Cate mangaieri trebuie pentru a o satisface
+    - Cat timp ramane fericita
+    - Cat de des se misca / sta (idle min/max)
+    - Viteza de mers (min/max)
+
+  PISICI EXTRA:
+    - Butoane +/- pentru a adauga sau scoate pisici (0-100)
+
+  BUTON SUMMON:
+    - Forteaza pisica sa-ti ceara atentie imediat
+
+
+================================================================================
+  12. EASTER EGG — 67
+================================================================================
+
+Apasand tasta 6 sau 7 pe tastatura:
+  - Toate pisicile de pe ecran fac o animatie speciala
+  - Apare bubble-ul "67!" si se joaca un sunet
+  - Dureaza 1.5 secunde, apoi revin la normal
+  - Nu functioneaza cand pisica e nervoasa/ataca
+
+
+================================================================================
+  13. SINCRONIZAREA INTRE TAB-URI
+================================================================================
+
+Pisica principala este aceeasi pe toate tab-urile deschise:
+  - Pozitia, animatia si starea sunt identice pe fiecare tab
+  - Cand pisica se plimba pe un tab, se plimba la fel pe toate
+  - Mangaierea pe orice tab conteaza (se aduna)
+  - Pisicile extra sunt independente per tab (fiecare tab are ale lui)
+
+
+================================================================================
+  14. SCENARII DE UTILIZARE
+================================================================================
+
+  SCENARIU 1 — Utilizator atent:
+    Pisica se plimba, doarme, mananca. Dupa ~1 minut cere atentie.
+    Dai 3 click-uri pe ea → devine fericita → ciclul se repeta.
+
+  SCENARIU 2 — Utilizator care ignora pisica:
+    Pisica cere atentie → sufla → ataca → urmareste cursorul →
+    te prinde → countdown 5...4...3...2...1...0 → TAB INCHIS.
+
+  SCENARIU 3 — Salvare in ultima secunda:
+    Countdown: 5...4...3... → misti mouse-ul → anulat →
+    pisica reia urmarirea → o mangai de 3 ori → happy.
+
+  SCENARIU 4 — Armata de pisici:
+    Adaugi 10 pisici din popup → 11 pisici pe ecran →
+    toate se plimba independent → cand una cere atentie,
+    TOATE o fac → 11 pisici te urmaresc simultan.
+
+
+================================================================================
+  15. TEHNOLOGII FOLOSITE
+================================================================================
+
+  - Chrome Extension Manifest V3
+  - JavaScript vanilla (fara framework-uri sau librarii)
+  - Chrome Storage API (persistenta stare si setari)
+  - Chrome Tabs API (inchidere tab)
+  - Shadow DOM (izolare CSS — pisica nu e afectata de stilul paginii)
+  - CSS Animations (sprite sheets, efecte vizuale)
+  - Web Audio API (efecte sonore)
+  - Service Worker (background persistent)
+  - Sprite sheets pixel art (32x32px, scalate 3x)
+
+
+================================================================================
+  16. STRUCTURA PROIECTULUI
+================================================================================
+
+  extension/
+  ├── manifest.json       — Configuratia extensiei
+  ├── background.js       — Logica principala (state machine)
+  ├── popup.html/js       — Interfata setari
+  ├── icon*.png           — Iconite extensie
+  ├── cat/                — Comportamente pisica
+  │   ├── config.js       — Sprite-uri, mesaje, parametri
+  │   ├── idle.js         — Comportament idle
+  │   ├── walk.js         — Mersul pisicii
+  │   ├── activities.js   — Activitati (doarme, mananca, etc.)
+  │   ├── attention.js    — Urmarire cursor + countdown
+  │   ├── petting.js      — Mangaiere + stare fericita
+  │   ├── rage.js         — Ragequit
+  │   ├── keyboard.js     — Easter egg 67
+  │   ├── audio.js        — Sistem de sunet
+  │   └── main.js         — Clasa principala + pisici extra + boot
+  ├── sprites/            — 16 sprite sheets (.png)
+  └── audio/              — 16 efecte sonore (.ogg)
+
+
+================================================================================
+                              END OF DOCUMENTATION
+================================================================================
