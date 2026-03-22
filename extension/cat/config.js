@@ -8,20 +8,22 @@
   const DH = FH * SCALE;
 
   const SPRITES = {
-    rest:         { frames: 6,  speed: 0.25 },
-    sit:          { frames: 6,  speed: 0.2  },
-    'walk-right': { frames: 8,  speed: 0.08 },
-    'walk-left':  { frames: 8,  speed: 0.08 },
-    'walk-down':  { frames: 4,  speed: 0.12 },
-    'walk-up':    { frames: 4,  speed: 0.12 },
-    sleep:        { frames: 2,  speed: 0.5  },
-    eat:          { frames: 8,  speed: 0.15 },
+    rest:         { frames: 6,  speed: 0.4  },
+    sit:          { frames: 6,  speed: 0.35 },
+    'walk-right': { frames: 8,  speed: 0.14 },
+    'walk-left':  { frames: 8,  speed: 0.14 },
+    'walk-down':  { frames: 4,  speed: 0.2  },
+    'walk-up':    { frames: 4,  speed: 0.2  },
+    sleep:        { frames: 2,  speed: 0.8  },
+    eat:          { frames: 8,  speed: 0.25 },
     meow:         { frames: 3,  speed: 0.2  },
-    yawn:         { frames: 8,  speed: 0.15 },
-    wash:         { frames: 9,  speed: 0.12 },
-    itch:         { frames: 11, speed: 0.1  },
+    yawn:         { frames: 8,  speed: 0.25 },
+    wash:         { frames: 9,  speed: 0.2  },
+    itch:         { frames: 11, speed: 0.17 },
     hiss:         { frames: 2,  speed: 0.2  },
     paw:          { frames: 9,  speed: 0.08 },
+    '67':         { frames: 2,  speed: 0.3 },
+    '67-mirrored': { frames: 2,  speed: 0.3 },
   };
 
   for (const [name, s] of Object.entries(SPRITES)) {
@@ -139,6 +141,7 @@
     needy:  ['Pet me!', 'Meow!', 'Hey!', 'Miau!', 'Notice me!', 'Mrrp?', 'Psst!'],
     angry:  ['PET ME!', 'MEOW!!', 'HEY!!', '*angry meow*', 'MIAU!', 'Acum!'],
     attack: ['*ATTACK*', 'MIAU!!!', '*paw paw*', 'PET. ME. NOW.'],
+    rageQuit: ['GOODBYE!', '*RAGE QUIT*', 'I\'m outta here!', 'Bye forever!', 'You had your chance!'],
     happy:  ['Prrr~', '\u2665', 'Mrrr~', ':3'],
     sleep:  ['zzz...', '*snore*', 'z..z..'],
   };
