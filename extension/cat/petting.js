@@ -7,45 +7,26 @@
     apply(proto) {
 
       proto.onPet = function () {
-        if (this.state === 'happy') return;
+        if (this.currentAction === 'happy') return;
 
-        this.totalPets++;
-        this.saveStats();
         this.spawnHeart();
+        this.showBubble(this.pick(C.MESSAGES.happy));
 
-        if (this.state !== 'needy' && this.state !== 'hissing' && this.state !== 'attacking') {
-          this.showBubble(this.pick(C.MESSAGES.happy));
-          return;
-        }
-
-        this.petCount++;
-        if (this.petCount >= this.petsNeeded) {
-          this.satisfy();
-        } else {
-          this.showBubble(this.pick(C.MESSAGES.happy));
-        }
+        // Tell background to handle state change
+        chrome.runtime.sendMessage({ type: 'pet' });
       };
 
-      proto.satisfy = function () {
-        this.clearState();
-        this.clearAttention();
-        this.state = 'happy';
-
-        this.overlay.classList.remove('active');
-        this.setSprite('sleep');
+      proto.enter_happy = function () {
         this.catEl.classList.add('purring');
         this.showBubble('Prrrrr~ \u2665');
-
         for (let i = 0; i < 5; i++) setTimeout(() => this.spawnHeart(), i * 200);
+      };
 
-        this.stateTimer = setTimeout(() => {
-          this.catY = window.innerHeight - C.DH;
-          this.catX = Math.max(0, Math.min(window.innerWidth - C.DW, this.catX));
-          this.updatePosition();
-          this.catEl.classList.remove('purring');
-          this.enterIdle();
-          this.scheduleAttention();
-        }, 2500);
+      proto.exit_happy = function () {
+        this.catEl.classList.remove('purring');
+        this.catY = window.innerHeight - C.DH;
+        this.catX = Math.max(0, Math.min(window.innerWidth - C.DW, this.catX));
+        this.updatePosition();
       };
 
       proto.spawnHeart = function () {

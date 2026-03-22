@@ -8,7 +8,7 @@
 
   class BrowserCat {
     constructor() {
-      this.state = 'idle';
+      this.currentAction = null;
       this.catX = 200;
       this.catY = 0;
       this.targetX = 200;
@@ -17,37 +17,55 @@
       this.mouseX = window.innerWidth / 2;
       this.mouseY = window.innerHeight / 2;
 
-      this.petCount = 0;
-      this.petsNeeded = 3;
-      this.totalPets = 0;
-
-      this.stateTimer = null;
-      this.attentionTimer = null;
-      this.patienceTimer = null;
       this.frameId = null;
       this.bubbleTimer = null;
 
-      this.attentionMinDelay = 3000;
-      this.attentionMaxDelay = 8000;
-      this.patienceDelay = 4000;
-
-      this.loadConfig().then(() => {
-        console.log('[BrowserCat] Ready. Attention:',
-          this.attentionMinDelay, '-', this.attentionMaxDelay,
-          'Patience:', this.patienceDelay);
-        this.init();
-      });
-    }
-
-    init() {
       this.createDOM();
       this.bindEvents();
+
       this.catX = DW + Math.random() * (window.innerWidth - DW * 2);
       this.catY = window.innerHeight - DH;
       this.updatePosition();
-      this.enterIdle();
-      this.scheduleAttention();
-      this.loadStats();
+
+      // Connect to background to keep service worker alive
+      this.port = chrome.runtime.connect({ name: 'cat-keepalive' });
+
+      // Load initial state
+      chrome.storage.local.get(['catState'], (data) => {
+        if (data.catState) this.applyState(data.catState);
+      });
+
+      // React to state changes from background
+      chrome.storage.onChanged.addListener((changes) => {
+        if (changes.catState) {
+          this.applyState(changes.catState.newValue);
+        }
+      });
+    }
+
+    // ── State application ────────────────────────────────────────────
+    applyState(newState) {
+      if (!newState) return;
+
+      const oldAction = this.currentAction;
+      const newAction = newState.action;
+
+      if (oldAction === newAction) return;
+
+      // Exit old state
+      const exitFn = this['exit_' + oldAction];
+      if (exitFn) exitFn.call(this);
+
+      this.currentAction = newAction;
+
+      // Set sprite (walking overrides locally in enter_walking)
+      if (newAction !== 'walking') {
+        this.setSprite(newState.sprite);
+      }
+
+      // Enter new state
+      const enterFn = this['enter_' + newAction];
+      if (enterFn) enterFn.call(this, newState);
     }
 
     // ── DOM ──────────────────────────────────────────────────────────
@@ -82,6 +100,7 @@
         this.mouseY = e.clientY;
       });
 
+      // Capture-phase click on document to bypass shadow DOM issues
       document.addEventListener('click', (e) => {
         const rect = this.catEl.getBoundingClientRect();
         if (rect.width === 0) return;
@@ -105,70 +124,17 @@
       });
 
       window.addEventListener('resize', () => {
-        if (this.state !== 'attacking') {
+        if (this.currentAction !== 'attacking') {
           this.catY = window.innerHeight - DH;
           this.catX = Math.max(0, Math.min(window.innerWidth - DW, this.catX));
           this.updatePosition();
         }
       });
-
-      if (chrome?.runtime?.onMessage) {
-        chrome.runtime.onMessage.addListener((msg) => {
-          if (msg.type === 'summon') this.needAttention();
-        });
-      }
-
-      if (chrome?.storage?.onChanged) {
-        chrome.storage.onChanged.addListener((changes) => {
-          if (changes.catConfig) {
-            const c = changes.catConfig.newValue || {};
-            if (c.appearMinDelay != null) this.attentionMinDelay = c.appearMinDelay;
-            if (c.appearMaxDelay != null) this.attentionMaxDelay = c.appearMaxDelay;
-            if (c.demandDelay != null)    this.patienceDelay = c.demandDelay;
-          }
-        });
-      }
-    }
-
-    // ── Config / Stats ───────────────────────────────────────────────
-    loadConfig() {
-      return new Promise((resolve) => {
-        if (!chrome?.storage?.local) return resolve();
-        chrome.storage.local.get(['catConfig'], (data) => {
-          if (data.catConfig) {
-            const c = data.catConfig;
-            if (c.appearMinDelay != null) this.attentionMinDelay = c.appearMinDelay;
-            if (c.appearMaxDelay != null) this.attentionMaxDelay = c.appearMaxDelay;
-            if (c.demandDelay != null)    this.patienceDelay = c.demandDelay;
-          }
-          resolve();
-        });
-      });
-    }
-
-    loadStats() {
-      if (chrome?.storage?.local) {
-        chrome.storage.local.get(['totalPets'], (d) => { this.totalPets = d.totalPets || 0; });
-      }
-    }
-
-    saveStats() {
-      if (chrome?.storage?.local) chrome.storage.local.set({ totalPets: this.totalPets });
     }
 
     // ── Helpers ──────────────────────────────────────────────────────
     setSprite(name) {
       this.sprite.className = 'sprite sprite-' + name;
-    }
-
-    clearState() {
-      if (this.stateTimer) { clearTimeout(this.stateTimer); this.stateTimer = null; }
-      if (this.frameId) { cancelAnimationFrame(this.frameId); this.frameId = null; }
-    }
-
-    clearAttention() {
-      if (this.attentionTimer) { clearTimeout(this.attentionTimer); this.attentionTimer = null; }
-      if (this.patienceTimer) { clearTimeout(this.patienceTimer); this.patienceTimer = null; }
     }
 
     updatePosition() {
