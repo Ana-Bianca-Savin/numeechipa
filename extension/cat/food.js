@@ -72,20 +72,17 @@
           this.scheduleFood();
         }, 3000);
       };
+
+      proto.spawnTestFish = function() {
+        console.log("Force spawning fish...");
+        this.spawnFood();
+      };
     }
   });
-})();
 
-// Spawn fish from console
-window.spawnTestFish = function() {
-    const catInstance = document.querySelector('#browser-cat-host');
-    if (catInstance) {
-        console.log("Force spawning fish...");
-        // This assumes your instance is accessible. 
-        // If not, just use this simple test:
-        const test = document.createElement('div');
-        test.style.cssText = "position:fixed;top:50px;left:50px;width:50px;height:50px;background:red;z-index:999999;";
-        test.innerText = "FISH TEST";
-        document.body.appendChild(test);
-    }
-};
+  // Expose global function for console testing
+  window.spawnTestFish = function() {
+    console.log("spawnTestFish called from console");
+    // Note: This will need the cat instance to work properly
+  };
+})();
