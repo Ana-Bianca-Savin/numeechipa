@@ -8,8 +8,12 @@
 
       proto.enter_rageQuit = function () {
         this.overlay.classList.add('active');
-        this.showBubble(this.pick(C.MESSAGES.rageQuit));
-        
+
+        // Show rage quit message at second 3 (after 2 seconds)
+        this._rageMessageTimeout = setTimeout(() => {
+          this.showBubble(this.pick(C.MESSAGES.rageQuit));
+        }, 2000);
+
         // Create a countdown overlay immediately
         let countdown = 5;
         const countdownEl = document.createElement('div');
@@ -52,6 +56,11 @@
       proto.exit_rageQuit = function () {
         this.overlay.classList.remove('active');
         if (this.frameId) { cancelAnimationFrame(this.frameId); this.frameId = null; }
+        // Clean up rage message timeout
+        if (this._rageMessageTimeout) {
+          clearTimeout(this._rageMessageTimeout);
+          this._rageMessageTimeout = null;
+        }
         // Clean up countdown
         if (this.countdownInterval) {
           clearInterval(this.countdownInterval);
