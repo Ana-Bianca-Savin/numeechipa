@@ -4,29 +4,44 @@
   if (window !== window.top) return;
 
   // ── Sprite config ──────────────────────────────────────────────────
-  const FRAME = 16;        // source frame size
-  const SCALE = 5;         // display scale (16 * 5 = 80px)
-  const SIZE = FRAME * SCALE;
+  const FW = 32;
+  const FH = 32;
+  const SCALE = 3;
+  const DW = FW * SCALE;   // 96px
+  const DH = FH * SCALE;   // 96px
 
   const SPRITES = {
-    idle: { url: chrome.runtime.getURL('sprites/rest.png'),       frames: 12, speed: 0.12 },
-    walk: { url: chrome.runtime.getURL('sprites/walk-right.png'), frames: 8,  speed: 0.08 },
-    meow: { url: chrome.runtime.getURL('sprites/meow-sit.png'),  frames: 6,  speed: 0.15 },
-    sleep:{ url: chrome.runtime.getURL('sprites/sleep.png'),      frames: 4,  speed: 0.35 },
+    rest:         { frames: 6,  speed: 0.25 },
+    sit:          { frames: 6,  speed: 0.2  },
+    'walk-right': { frames: 8,  speed: 0.08 },
+    'walk-left':  { frames: 8,  speed: 0.08 },
+    'walk-down':  { frames: 4,  speed: 0.12 },
+    'walk-up':    { frames: 4,  speed: 0.12 },
+    sleep:        { frames: 2,  speed: 0.5  },
+    eat:          { frames: 8,  speed: 0.15 },
+    meow:         { frames: 3,  speed: 0.2  },
+    yawn:         { frames: 8,  speed: 0.15 },
+    wash:         { frames: 9,  speed: 0.12 },
+    itch:         { frames: 11, speed: 0.1  },
+    hiss:         { frames: 2,  speed: 0.2  },
+    paw:          { frames: 9,  speed: 0.08 },
   };
 
+  for (const [name, s] of Object.entries(SPRITES)) {
+    s.url = chrome.runtime.getURL(`sprites/${name}.png`);
+  }
+
   // ── CSS ────────────────────────────────────────────────────────────
-  // Generate keyframes for each sprite
   let spriteCSS = '';
   for (const [name, s] of Object.entries(SPRITES)) {
     spriteCSS += `
       @keyframes anim-${name} {
         from { background-position: 0 0; }
-        to   { background-position: -${s.frames * SIZE}px 0; }
+        to   { background-position: -${s.frames * DW}px 0; }
       }
       .sprite-${name} {
         background-image: url('${s.url}');
-        background-size: ${s.frames * SIZE}px ${SIZE}px;
+        background-size: ${s.frames * DW}px ${DH}px;
         animation: anim-${name} ${s.frames * s.speed}s steps(${s.frames}) infinite;
       }
     `;
@@ -35,41 +50,31 @@
   const STYLES = `
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    :host {
-      position: fixed !important;
-      top: 0 !important; left: 0 !important;
-      width: 100vw !important; height: 100vh !important;
-      z-index: 2147483647 !important;
-      pointer-events: none !important;
-      overflow: hidden;
-    }
-
     #overlay {
       display: none;
-      position: absolute;
+      position: fixed;
       top: 0; left: 0;
-      width: 100%; height: 100%;
+      width: 100vw; height: 100vh;
+      z-index: 2147483646;
       pointer-events: auto;
       cursor: none;
     }
     #overlay.active { display: block; }
 
     #cat {
-      position: absolute;
+      position: fixed;
+      z-index: 2147483647;
       pointer-events: auto;
       cursor: pointer;
-      width: ${SIZE}px;
-      height: ${SIZE}px;
-      transform: translate(-50%, -50%);
+      width: ${DW}px;
+      height: ${DH}px;
       user-select: none;
       -webkit-user-select: none;
     }
-    #cat.hidden { display: none; }
-    #cat.flip .sprite { transform: scaleX(-1); }
 
     .sprite {
-      width: ${SIZE}px;
-      height: ${SIZE}px;
+      width: ${DW}px;
+      height: ${DH}px;
       background-repeat: no-repeat;
       image-rendering: pixelated;
       image-rendering: crisp-edges;
@@ -109,83 +114,70 @@
 
     /* ── Hearts ── */
     .heart {
-      position: absolute;
+      position: fixed;
       font-size: 18px;
       pointer-events: none;
       animation: float-up 1s ease-out forwards;
-      z-index: 20;
+      z-index: 2147483647;
     }
     @keyframes float-up {
       0%   { opacity: 1; transform: translateY(0) scale(1); }
       100% { opacity: 0; transform: translateY(-60px) scale(1.5); }
     }
 
-    /* ── Entrance ── */
-    #cat.entering {
-      animation: pop-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    }
-    @keyframes pop-in {
-      0%   { transform: translate(-50%,-50%) scale(0); }
-      70%  { transform: translate(-50%,-50%) scale(1.15); }
-      100% { transform: translate(-50%,-50%) scale(1); }
-    }
-
-    /* ── Leave ── */
-    #cat.leaving {
-      animation: shrink-out 0.4s ease-in forwards;
-      pointer-events: none;
-    }
-    @keyframes shrink-out {
-      0%   { transform: translate(-50%,-50%) scale(1); opacity: 1; }
-      100% { transform: translate(-50%,-50%) scale(0); opacity: 0; }
-    }
-
-    /* ── Walk bounce ── */
-    #cat.walking {
-      animation: walk-bounce 0.35s ease-in-out infinite;
-    }
-    @keyframes walk-bounce {
-      0%, 100% { transform: translate(-50%,-50%) translateY(0); }
-      50%      { transform: translate(-50%,-50%) translateY(-6px); }
-    }
-
     /* ── Purr vibration ── */
-    #cat.purring {
-      animation: purr 0.12s linear infinite;
+    #cat.purring .sprite {
+      animation-name: purr-shake !important;
+      animation-duration: 0.12s !important;
+      animation-timing-function: linear !important;
+      animation-iteration-count: infinite !important;
     }
-    @keyframes purr {
-      0%, 100% { transform: translate(-50%,-50%) translateX(0); }
-      25%      { transform: translate(-50%,-50%) translateX(-2px); }
-      75%      { transform: translate(-50%,-50%) translateX(2px); }
+    @keyframes purr-shake {
+      0%, 100% { transform: translateX(0); }
+      25%      { transform: translateX(-2px); }
+      75%      { transform: translateX(2px); }
     }
   `;
 
   // ── Messages ───────────────────────────────────────────────────────
-  const MSG_APPEAR = ['Meow!','Pet me!','Mrrp?','Miau!','*purr*','Hey!','Psst!','Notice me!'];
-  const MSG_DEMAND = ['PET ME!','MEOW!!','HEY!!','*angry meow*','MIAU!','Acum!'];
-  const MSG_HAPPY  = ['Prrr~','♡','Mrrr~',':3'];
+  const MSG_IDLE    = ['*sits*', '*looks around*', 'Mrrp?', '~', '*stretch*'];
+  const MSG_NEEDY   = ['Pet me!', 'Meow!', 'Hey!', 'Miau!', 'Notice me!', 'Mrrp?', 'Psst!'];
+  const MSG_ANGRY   = ['PET ME!', 'MEOW!!', 'HEY!!', '*angry meow*', 'MIAU!', 'Acum!'];
+  const MSG_ATTACK  = ['*ATTACK*', 'MIAU!!!', '*paw paw*', 'PET. ME. NOW.'];
+  const MSG_HAPPY   = ['Prrr~', '\u2665', 'Mrrr~', ':3'];
+  const MSG_SLEEP   = ['zzz...', '*snore*', 'z..z..'];
 
   // ── Main Class ─────────────────────────────────────────────────────
   class BrowserCat {
     constructor() {
-      this.state = 'hidden';
+      this.state = 'idle';
+      this.catX = 200;
+      this.catY = 0;
+      this.targetX = 200;
+      this.walkSpeed = 2;
+
       this.mouseX = window.innerWidth / 2;
       this.mouseY = window.innerHeight / 2;
-      this.catX = 0;
-      this.catY = 0;
+
       this.petCount = 0;
       this.petsNeeded = 3;
       this.totalPets = 0;
-      this.demandTimeout = null;
-      this.frameId = null;
 
-      this.appearMinDelay = 3000;
-      this.appearMaxDelay = 8000;
-      this.demandDelay = 4000;
-      this.chaseSpeed = 0.04;
+      this.stateTimer = null;
+      this.attentionTimer = null;
+      this.patienceTimer = null;
+      this.frameId = null;
+      this.bubbleTimer = null;
+
+      // Config defaults (Testing preset)
+      this.attentionMinDelay = 3000;
+      this.attentionMaxDelay = 8000;
+      this.patienceDelay = 4000;
 
       this.loadConfig().then(() => {
-        console.log('[BrowserCat] Ready, delays:', this.appearMinDelay, '-', this.appearMaxDelay);
+        console.log('[BrowserCat] Ready. Attention interval:',
+          this.attentionMinDelay, '-', this.attentionMaxDelay,
+          'Patience:', this.patienceDelay);
         this.init();
       });
     }
@@ -193,7 +185,11 @@
     init() {
       this.createDOM();
       this.bindEvents();
-      this.scheduleAppearance();
+      this.catX = DW + Math.random() * (window.innerWidth - DW * 2);
+      this.catY = window.innerHeight - DH;
+      this.updatePosition();
+      this.enterIdle();
+      this.scheduleAttention();
       this.loadStats();
     }
 
@@ -214,38 +210,64 @@
 
       this.catEl = document.createElement('div');
       this.catEl.id = 'cat';
-      this.catEl.className = 'hidden';
-      this.catEl.innerHTML = '<div class="sprite sprite-idle"></div><div id="bubble"></div>';
+      this.catEl.innerHTML = '<div class="sprite sprite-rest"></div><div id="bubble"></div>';
       this.shadow.appendChild(this.catEl);
 
       this.sprite = this.catEl.querySelector('.sprite');
       this.bubble = this.catEl.querySelector('#bubble');
-
-      console.log('[BrowserCat] DOM created');
     }
 
     bindEvents() {
-      document.addEventListener('mousemove', (e) => { this.mouseX = e.clientX; this.mouseY = e.clientY; });
-      this.overlay.addEventListener('mousemove', (e) => { this.mouseX = e.clientX; this.mouseY = e.clientY; });
-
-      this.overlay.addEventListener('click', (e) => {
-        const dx = e.clientX - this.catX, dy = e.clientY - this.catY;
-        if (Math.sqrt(dx*dx + dy*dy) < 60) this.onPet();
+      document.addEventListener('mousemove', (e) => {
+        this.mouseX = e.clientX;
+        this.mouseY = e.clientY;
       });
 
-      this.catEl.addEventListener('click', () => this.onPet());
+      // Click handler on document (capture phase) to bypass shadow DOM issues
+      document.addEventListener('click', (e) => {
+        const rect = this.catEl.getBoundingClientRect();
+        if (rect.width === 0) return;
+        if (e.clientX >= rect.left && e.clientX <= rect.right &&
+            e.clientY >= rect.top && e.clientY <= rect.bottom) {
+          this.onPet();
+        }
+      }, true);
+
+      // Also handle clicks on the overlay during attack
+      this.overlay.addEventListener('click', (e) => {
+        const rect = this.catEl.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = e.clientX - cx, dy = e.clientY - cy;
+        if (Math.sqrt(dx * dx + dy * dy) < DW) this.onPet();
+      });
+
+      this.overlay.addEventListener('mousemove', (e) => {
+        this.mouseX = e.clientX;
+        this.mouseY = e.clientY;
+      });
+
+      window.addEventListener('resize', () => {
+        if (this.state !== 'attacking') {
+          this.catY = window.innerHeight - DH;
+          this.catX = Math.max(0, Math.min(window.innerWidth - DW, this.catX));
+          this.updatePosition();
+        }
+      });
 
       if (chrome?.runtime?.onMessage) {
-        chrome.runtime.onMessage.addListener((msg) => { if (msg.type === 'summon') this.appear(); });
+        chrome.runtime.onMessage.addListener((msg) => {
+          if (msg.type === 'summon') this.needAttention();
+        });
       }
 
       if (chrome?.storage?.onChanged) {
         chrome.storage.onChanged.addListener((changes) => {
           if (changes.catConfig) {
             const c = changes.catConfig.newValue || {};
-            if (c.appearMinDelay != null) this.appearMinDelay = c.appearMinDelay;
-            if (c.appearMaxDelay != null) this.appearMaxDelay = c.appearMaxDelay;
-            if (c.demandDelay != null)    this.demandDelay = c.demandDelay;
+            if (c.appearMinDelay != null) this.attentionMinDelay = c.appearMinDelay;
+            if (c.appearMaxDelay != null) this.attentionMaxDelay = c.appearMaxDelay;
+            if (c.demandDelay != null)    this.patienceDelay = c.demandDelay;
           }
         });
       }
@@ -258,9 +280,9 @@
         chrome.storage.local.get(['catConfig'], (data) => {
           if (data.catConfig) {
             const c = data.catConfig;
-            if (c.appearMinDelay != null) this.appearMinDelay = c.appearMinDelay;
-            if (c.appearMaxDelay != null) this.appearMaxDelay = c.appearMaxDelay;
-            if (c.demandDelay != null)    this.demandDelay = c.demandDelay;
+            if (c.appearMinDelay != null) this.attentionMinDelay = c.appearMinDelay;
+            if (c.appearMaxDelay != null) this.attentionMaxDelay = c.appearMaxDelay;
+            if (c.demandDelay != null)    this.patienceDelay = c.demandDelay;
           }
           resolve();
         });
@@ -282,91 +304,166 @@
       this.sprite.className = 'sprite sprite-' + name;
     }
 
-    // ── Scheduling ───────────────────────────────────────────────────
-    scheduleAppearance() {
-      const delay = this.appearMinDelay + Math.random() * (this.appearMaxDelay - this.appearMinDelay);
-      this.appearTimer = setTimeout(() => this.appear(), delay);
+    // ── State cleanup ────────────────────────────────────────────────
+    clearState() {
+      if (this.stateTimer) { clearTimeout(this.stateTimer); this.stateTimer = null; }
+      if (this.frameId) { cancelAnimationFrame(this.frameId); this.frameId = null; }
     }
 
-    // ── Appear ───────────────────────────────────────────────────────
-    appear() {
-      if (this.state !== 'hidden') return;
-      this.state = 'appearing';
+    clearAttention() {
+      if (this.attentionTimer) { clearTimeout(this.attentionTimer); this.attentionTimer = null; }
+      if (this.patienceTimer) { clearTimeout(this.patienceTimer); this.patienceTimer = null; }
+    }
+
+    // ── IDLE ─────────────────────────────────────────────────────────
+    enterIdle() {
+      this.clearState();
+      this.state = 'idle';
+      this.catEl.classList.remove('purring');
+      this.setSprite(Math.random() < 0.5 ? 'rest' : 'sit');
+
+      const delay = 2000 + Math.random() * 4000;
+      this.stateTimer = setTimeout(() => this.pickActivity(), delay);
+
+      if (Math.random() < 0.3) {
+        setTimeout(() => this.showBubble(this.pick(MSG_IDLE)), 500);
+      }
+    }
+
+    // ── ACTIVITY PICKER ──────────────────────────────────────────────
+    pickActivity() {
+      if (this.state !== 'idle') return;
+
+      const activities = ['walk', 'walk', 'walk', 'eat', 'wash', 'yawn', 'sleep', 'itch', 'sit'];
+      const choice = activities[Math.floor(Math.random() * activities.length)];
+
+      switch (choice) {
+        case 'walk': this.startWalking(); break;
+        case 'sit':  this.doActivity('sit', 1); break;
+        default:     this.doActivity(choice, choice === 'sleep' ? 4 : 2); break;
+      }
+    }
+
+    // ── WALKING ──────────────────────────────────────────────────────
+    startWalking() {
+      this.clearState();
+      this.state = 'walking';
+      this.walkSpeed = 1.5 + Math.random() * 1.5;
+
+      const margin = DW;
+      this.targetX = margin + Math.random() * (window.innerWidth - margin * 2);
+
+      const dir = this.targetX > this.catX ? 'walk-right' : 'walk-left';
+      this.setSprite(dir);
+      this.walk();
+    }
+
+    walk() {
+      if (this.state !== 'walking') return;
+
+      const dx = this.targetX - this.catX;
+      if (Math.abs(dx) < 4) {
+        this.enterIdle();
+        return;
+      }
+
+      this.catX += Math.sign(dx) * this.walkSpeed;
+      this.updatePosition();
+      this.frameId = requestAnimationFrame(() => this.walk());
+    }
+
+    // ── GENERIC ACTIVITY ─────────────────────────────────────────────
+    doActivity(spriteName, loops) {
+      this.clearState();
+      this.state = 'activity';
+      this.setSprite(spriteName);
+
+      if (spriteName === 'sleep' && Math.random() < 0.5) {
+        setTimeout(() => this.showBubble(this.pick(MSG_SLEEP)), 800);
+      }
+
+      const s = SPRITES[spriteName];
+      const duration = s.frames * s.speed * loops * 1000;
+      this.stateTimer = setTimeout(() => this.enterIdle(), duration);
+    }
+
+    // ── ATTENTION SYSTEM ─────────────────────────────────────────────
+    scheduleAttention() {
+      this.clearAttention();
+      const delay = this.attentionMinDelay +
+        Math.random() * (this.attentionMaxDelay - this.attentionMinDelay);
+      this.attentionTimer = setTimeout(() => this.needAttention(), delay);
+    }
+
+    needAttention() {
+      if (this.state === 'needy' || this.state === 'hissing' ||
+          this.state === 'attacking' || this.state === 'happy') return;
+
+      this.clearState();
+      this.clearAttention();
+      this.state = 'needy';
       this.petCount = 0;
-      this.setSprite('idle');
+      this.setSprite('meow');
+      this.showBubble(this.pick(MSG_NEEDY));
+      console.log('[BrowserCat] Needs attention!');
 
-      const edge = Math.floor(Math.random() * 4);
-      const m = SIZE;
-      switch (edge) {
-        case 0: this.catX = m + Math.random()*(window.innerWidth-m*2);  this.catY = m; break;
-        case 1: this.catX = window.innerWidth-m;  this.catY = m + Math.random()*(window.innerHeight-m*2); break;
-        case 2: this.catX = m + Math.random()*(window.innerWidth-m*2);  this.catY = window.innerHeight-m; break;
-        case 3: this.catX = m;  this.catY = m + Math.random()*(window.innerHeight-m*2); break;
-      }
-
-      this.catEl.className = 'entering';
-      this.updatePosition();
-      this.showBubble(this.pick(MSG_APPEAR));
-      console.log('[BrowserCat] Appearing at', Math.round(this.catX), Math.round(this.catY));
-
-      setTimeout(() => {
-        this.catEl.classList.remove('entering');
-        this.catEl.className = '';
-        this.state = 'waiting';
-        this.setSprite('meow');
-        this.demandTimeout = setTimeout(() => this.startChasing(), this.demandDelay);
-      }, 400);
+      this.patienceTimer = setTimeout(() => this.startHissing(), this.patienceDelay);
     }
 
-    // ── Chase ────────────────────────────────────────────────────────
-    startChasing() {
-      if (this.state !== 'waiting') return;
-      this.state = 'chasing';
-      this.setSprite('walk');
-      this.catEl.classList.add('walking');
+    startHissing() {
+      if (this.state !== 'needy') return;
+      this.state = 'hissing';
+      this.setSprite('hiss');
+      this.showBubble(this.pick(MSG_ANGRY));
+      console.log('[BrowserCat] Hissing!');
+
+      this.patienceTimer = setTimeout(() => this.startAttacking(), this.patienceDelay);
+    }
+
+    startAttacking() {
+      if (this.state !== 'hissing') return;
+      this.state = 'attacking';
+      this.setSprite('paw');
       this.overlay.classList.add('active');
-      this.showBubble(this.pick(MSG_DEMAND));
-      this.chase();
+      this.showBubble(this.pick(MSG_ATTACK));
+      console.log('[BrowserCat] Attacking cursor!');
+      this.attack();
     }
 
-    chase() {
-      if (this.state !== 'chasing') return;
+    attack() {
+      if (this.state !== 'attacking') return;
 
-      const dx = this.mouseX - this.catX;
-      const dy = this.mouseY - this.catY;
-      const dist = Math.sqrt(dx*dx + dy*dy);
+      const catCX = this.catX + DW / 2;
+      const catCY = this.catY + DH / 2;
+      const dx = this.mouseX - catCX;
+      const dy = this.mouseY - catCY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
 
-      if (dist > 20) {
-        this.catX += dx * this.chaseSpeed;
-        this.catY += dy * this.chaseSpeed;
-      }
-
-      if (dx < -5) this.catEl.classList.add('flip');
-      else if (dx > 5) this.catEl.classList.remove('flip');
-
-      if (dist < 30) {
-        this.catEl.classList.remove('walking');
-        this.setSprite('meow');
-      } else if (!this.catEl.classList.contains('walking')) {
-        this.catEl.classList.add('walking');
-        this.setSprite('walk');
+      if (dist > 10) {
+        const speed = 0.08;
+        this.catX += dx * speed;
+        this.catY += dy * speed;
       }
 
       this.updatePosition();
-      this.frameId = requestAnimationFrame(() => this.chase());
+      this.frameId = requestAnimationFrame(() => this.attack());
     }
 
-    // ── Petting ──────────────────────────────────────────────────────
+    // ── PETTING ──────────────────────────────────────────────────────
     onPet() {
-      if (this.state === 'hidden' || this.state === 'leaving') return;
+      if (this.state === 'happy') return;
 
-      this.petCount++;
       this.totalPets++;
       this.saveStats();
       this.spawnHeart();
 
-      if (this.demandTimeout) { clearTimeout(this.demandTimeout); this.demandTimeout = null; }
+      // If not in attention-demanding states, just show love
+      if (this.state !== 'needy' && this.state !== 'hissing' && this.state !== 'attacking') {
+        this.showBubble(this.pick(MSG_HAPPY));
+        return;
+      }
 
+      this.petCount++;
       if (this.petCount >= this.petsNeeded) {
         this.satisfy();
       } else {
@@ -374,34 +471,27 @@
       }
     }
 
-    // ── Satisfied ────────────────────────────────────────────────────
+    // ── SATISFIED ────────────────────────────────────────────────────
     satisfy() {
-      this.state = 'satisfied';
-      if (this.frameId) { cancelAnimationFrame(this.frameId); this.frameId = null; }
-      this.overlay.classList.remove('active');
-      this.catEl.classList.remove('walking');
+      this.clearState();
+      this.clearAttention();
+      this.state = 'happy';
 
+      this.overlay.classList.remove('active');
       this.setSprite('sleep');
       this.catEl.classList.add('purring');
-      this.showBubble('Prrrrr~ ♡');
+      this.showBubble('Prrrrr~ \u2665');
 
       for (let i = 0; i < 5; i++) setTimeout(() => this.spawnHeart(), i * 200);
-      setTimeout(() => this.leave(), 2000);
-    }
 
-    // ── Leave ────────────────────────────────────────────────────────
-    leave() {
-      this.state = 'leaving';
-      this.catEl.classList.remove('purring');
-      this.catEl.classList.add('leaving');
-      this.hideBubble();
-
-      setTimeout(() => {
-        this.catEl.className = 'hidden';
-        this.setSprite('idle');
-        this.state = 'hidden';
-        this.scheduleAppearance();
-      }, 400);
+      this.stateTimer = setTimeout(() => {
+        this.catY = window.innerHeight - DH;
+        this.catX = Math.max(0, Math.min(window.innerWidth - DW, this.catX));
+        this.updatePosition();
+        this.catEl.classList.remove('purring');
+        this.enterIdle();
+        this.scheduleAttention();
+      }, 2500);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────
@@ -423,8 +513,8 @@
       const h = document.createElement('div');
       h.className = 'heart';
       h.textContent = '\u2764\uFE0F';
-      h.style.left = (this.catX - 20 + Math.random() * 40) + 'px';
-      h.style.top = (this.catY - 20) + 'px';
+      h.style.left = (this.catX + Math.random() * DW) + 'px';
+      h.style.top = (this.catY - 10) + 'px';
       this.shadow.appendChild(h);
       setTimeout(() => h.remove(), 1000);
     }

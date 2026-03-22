@@ -94,10 +94,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Summon button ──
   summonBtn.addEventListener('click', () => {
     chrome.runtime.sendMessage({ type: 'summon' });
-    summonBtn.textContent = '✨ Cat summoned!';
+    summonBtn.textContent = '✨ Cat noticed you!';
     summonBtn.style.background = 'linear-gradient(135deg, #6BCB77, #4CAF50)';
     setTimeout(() => {
-      summonBtn.textContent = '🐾 Summon Cat';
+      summonBtn.textContent = '🐾 Get Cat\'s Attention';
       summonBtn.style.background = '';
     }, 1500);
   });
