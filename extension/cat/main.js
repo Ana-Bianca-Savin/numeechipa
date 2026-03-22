@@ -17,9 +17,19 @@
       this.mouseX = window.innerWidth / 2;
       this.mouseY = window.innerHeight / 2;
       this.lastPetTime = 0;
+      this.dislikeTriggered = false;
 
       this.createDOM();
       this.bindEvents();
+
+      this.checkBadSite();
+
+      // Periodically check URL for SPA navigation (e.g., YouTube Shorts)
+      this.urlCheckInterval = setInterval(() => {
+        if (!this.dislikeTriggered) {
+          this.checkBadSite();
+        }
+      }, 1000);
 
       if (this.initKeyboard) this.initKeyboard();
 
@@ -42,6 +52,19 @@
     // ── State application (reactive) ─────────────────────────────────
     applyState(s) {
       if (!s) return;
+
+      if (this.dislikeTriggered) {
+        // During dislike page, only update position and sprite, ignore action changes
+        if (s.catX != null) {
+          this.catX = Math.max(0, Math.min(window.innerWidth - DW, s.catX));
+        }
+        if (s.catY != null) {
+          this.catY = Math.max(0, Math.min(window.innerHeight - DH, s.catY));
+        }
+        this.updatePosition();
+        this.setSprite(s.sprite, s.animStart, s.spriteFrame);
+        return;
+      }
 
       const oldAction = this.currentAction;
       const newAction = s.action;
@@ -118,7 +141,7 @@
         const rect = this.catEl.getBoundingClientRect();
         if (rect.width === 0) return;
         if (e.clientX >= rect.left && e.clientX <= rect.right &&
-            e.clientY >= rect.top && e.clientY <= rect.bottom) {
+            e.clientY >= rect.top && e.clientY <= rect.bottom && !this.dislikeTriggered) {
           this.onPet();
         }
       }, true);
@@ -128,7 +151,7 @@
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
         const dx = e.clientX - cx, dy = e.clientY - cy;
-        if (Math.sqrt(dx * dx + dy * dy) < DW) this.onPet();
+        if (Math.sqrt(dx * dx + dy * dy) < DW && !this.dislikeTriggered) this.onPet();
       });
 
       this.overlay.addEventListener('mousemove', (e) => {
@@ -143,6 +166,16 @@
           this.updatePosition();
         }
       });
+    }
+
+    checkBadSite() {
+      const url = window.location.href;
+      if ((url.match(/youtube\.com\/shorts/) || url.match(/instagram\.com/) || url.match(/tiktok\.com/)) && !this.dislikeTriggered) {
+        this.dislikeTriggered = true;
+        clearInterval(this.urlCheckInterval);
+        // Add a delay to ensure the page has loaded fully
+        setTimeout(() => this.enter_dislikePage(), 2000);
+      }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────
@@ -233,9 +266,10 @@
       this.catY = Math.random() * (window.innerHeight - DH);
       this.frameId = null;
       this.bubbleTimer = null;
-      this.action = 'idle';
+      this.currentAction = 'idle';
       this.mouseX = window.innerWidth / 2;
       this.mouseY = window.innerHeight / 2;
+      this.dislikeTriggered = false;
 
       this.host = document.createElement('div');
       document.body.appendChild(this.host);
@@ -264,7 +298,7 @@
         const rect = this.catEl.getBoundingClientRect();
         if (rect.width === 0) return;
         if (e.clientX >= rect.left && e.clientX <= rect.right &&
-            e.clientY >= rect.top && e.clientY <= rect.bottom) {
+            e.clientY >= rect.top && e.clientY <= rect.bottom && !this.dislikeTriggered) {
           this.onPet();
         }
       }, true);
@@ -275,11 +309,20 @@
       });
 
       this.updatePosition();
+      
+      // Check for blocked sites and set up URL monitoring
+      this.checkBadSite();
+      this.urlCheckInterval = setInterval(() => {
+        if (!this.dislikeTriggered) {
+          this.checkBadSite();
+        }
+      }, 1000);
+      
       this._enterIdle();
     }
 
     onPet() {
-      if (this.action === 'happy') return;
+      if (this.currentAction === 'happy') return;
       const now = Date.now();
       if (now - this.lastPetTime < C.TUNING.petDebounce) return;
       this.lastPetTime = now;
@@ -340,6 +383,16 @@
 
     pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
+    checkBadSite() {
+      const url = window.location.href;
+      if ((url.match(/youtube\.com\/shorts/) || url.match(/instagram\.com/) || url.match(/tiktok\.com/)) && !this.dislikeTriggered) {
+        this.dislikeTriggered = true;
+        clearInterval(this.urlCheckInterval);
+        // Add a delay to ensure the page has loaded fully
+        setTimeout(() => this.enter_dislikePage(), 2000);
+      }
+    }
+
     // ── Attention: follows main cat's escalation state ──
     summon(escalationState) {
       const state = escalationState || 'needy';
@@ -347,13 +400,13 @@
       if (!chaseStates.includes(state)) return;
 
       // If already chasing at same or higher level, skip
-      if (chaseStates.includes(this.action) &&
-          chaseStates.indexOf(this.action) >= chaseStates.indexOf(state)) return;
+      if (chaseStates.includes(this.currentAction) &&
+          chaseStates.indexOf(this.currentAction) >= chaseStates.indexOf(state)) return;
 
       if (this.frameId) { cancelAnimationFrame(this.frameId); this.frameId = null; }
       clearTimeout(this._timer);
 
-      this.action = state;
+      this.currentAction = state;
       this._chaseSitting = false;
       this._chaseSitUntil = 0;
       this._mouseEscapedAt = null;
@@ -373,7 +426,7 @@
 
     _chaseLoop() {
       const chaseStates = ['needy', 'hissing', 'attacking'];
-      if (!chaseStates.includes(this.action)) return;
+      if (!chaseStates.includes(this.currentAction)) return;
 
       const now = Date.now();
       const catCX = this.catX + DW / 2;
@@ -391,7 +444,7 @@
 
       if (this._chaseSitting && now < this._chaseSitUntil) {
         // Attacking: resume sooner if mouse escapes
-        if (this.action === 'attacking' && dist > DW) {
+        if (this.currentAction === 'attacking' && dist > DW) {
           this._cancelCountdown();
           if (!this._mouseEscapedAt) {
             this._mouseEscapedAt = now;
@@ -403,9 +456,9 @@
         } else {
           this._mouseEscapedAt = null;
           // Schedule countdown in attacking
-          if (this.action === 'attacking' && !this._countdownActive && !this._countdownStartTimer) {
+          if (this.currentAction === 'attacking' && !this._countdownActive && !this._countdownStartTimer) {
             this._countdownStartTimer = setTimeout(() => {
-              if (this._chaseSitting && this.action === 'attacking') {
+              if (this._chaseSitting && this.currentAction === 'attacking') {
                 this._startCountdown();
               }
             }, C.TUNING.attackCountdownDelay);
@@ -488,7 +541,7 @@
       this._chaseGlobalStart = null;
       if (this.frameId) { cancelAnimationFrame(this.frameId); this.frameId = null; }
       clearTimeout(this._timer);
-      this.action = 'happy';
+      this.currentAction = 'happy';
       this.catEl.classList.add('purring');
       this.showBubble(this.pick(C.MESSAGES.happy));
       for (let i = 0; i < C.TUNING.happyHeartCount; i++) {
@@ -503,11 +556,11 @@
 
     // ── 67 animation ──
     trigger67(spriteName) {
-      const a = this.action;
+      const a = this.currentAction;
       if (a === 'needy' || a === 'hissing' || a === 'attacking') return;
 
       if (!this._67active) {
-        this._67savedAction = this.action;
+        this._67savedAction = this.currentAction;
         if (this.frameId) { cancelAnimationFrame(this.frameId); this.frameId = null; }
       }
 
@@ -539,7 +592,7 @@
 
     // ── Idle ──
     _enterIdle() {
-      this.action = 'idle';
+      this.currentAction = 'idle';
       if (this.frameId) { cancelAnimationFrame(this.frameId); this.frameId = null; }
       clearTimeout(this._timer);
 
@@ -564,7 +617,7 @@
       if (choice === 'walk') {
         this._startWalk();
       } else {
-        this.action = 'activity';
+        this.currentAction = 'activity';
         const info = C.SPRITES[choice];
         if (choice === 'sit') {
           const frame = Math.floor(Math.random() * (info ? info.frames : 6));
@@ -584,7 +637,7 @@
     }
 
     _startWalk() {
-      this.action = 'walking';
+      this.currentAction = 'walking';
       const margin = DW;
       this._walkTargetX = margin + Math.random() * (window.innerWidth - margin * 2);
       this._walkTargetY = margin + Math.random() * (window.innerHeight - margin * 2);
@@ -597,7 +650,7 @@
     }
 
     _walkLoop() {
-      if (this.action !== 'walking') return;
+      if (this.currentAction !== 'walking') return;
 
       const dx = this._walkTargetX - this.catX;
       const dy = this._walkTargetY - this.catY;
@@ -624,14 +677,76 @@
       this.frameId = requestAnimationFrame(() => this._walkLoop());
     }
 
+    enter_dislikePage() {
+      // Show message immediately
+      this.showBubble(this.pick(C.MESSAGES.dislikePage));
+
+      // Create a countdown overlay immediately
+      let countdown = 5;
+      const self = this;
+
+      const countdownEl = document.createElement('div');
+      countdownEl.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        color: #ff3333;
+        font-size: 72px;
+        font-weight: bold;
+        font-family: Arial, sans-serif;
+        padding: 40px 80px;
+        border-radius: 20px;
+        z-index: 2147483647;
+        text-align: center;
+        box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+      `;
+      countdownEl.textContent = countdown;
+      document.body.appendChild(countdownEl);
+
+      // Store references for cleanup
+      this.countdownEl = countdownEl;
+      this.countdownInterval = setInterval(function() {
+        countdown--;
+        if (countdown > 0) {
+          countdownEl.textContent = countdown;
+        } else {
+          clearInterval(self.countdownInterval);
+          // Send message to background to close the tab
+          chrome.runtime.sendMessage({ type: 'closeTab' });
+        }
+      }, 1000);
+    }
+
+    exit_dislikePage() {
+      // Clean up countdown
+      if (this.countdownInterval) {
+        clearInterval(this.countdownInterval);
+        this.countdownInterval = null;
+      }
+      if (this.countdownEl) {
+        this.countdownEl.remove();
+        this.countdownEl = null;
+      }
+    }
+
     destroy() {
       if (this.frameId) cancelAnimationFrame(this.frameId);
       clearTimeout(this._timer);
       clearTimeout(this.bubbleTimer);
       clearTimeout(this._67timeout);
+      clearInterval(this.urlCheckInterval);
+      clearInterval(this.countdownInterval);
       this._cancelCountdown();
+      this.exit_dislikePage();
       this.host.remove();
     }
+  }
+
+  // ── Apply behaviors to ExtraCat as well ──────────────────────────────
+  for (const b of C.behaviors) {
+    b.apply(ExtraCat.prototype);
   }
 
   // ── Boot ───────────────────────────────────────────────────────────
@@ -675,7 +790,7 @@
           for (const cat of extraCats) cat.enterHappy();
         } else if (action === 'idle') {
           for (const cat of extraCats) {
-            if (cat.action === 'happy') cat.exitHappy();
+            if (cat.currentAction === 'happy') cat.exitHappy();
             else cat.calmDown();
           }
         }

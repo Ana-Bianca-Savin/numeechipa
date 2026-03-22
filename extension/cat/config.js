@@ -182,6 +182,7 @@
     angry:  ['MEOW!!', 'MRRROW!!', '*hisss*', 'MIAU!', 'MEW!!', '*growl*', 'HSSS!'],
     attack: ['*SCRATCH*', 'MIAU!!!', '*paw paw*', '*CHOMP*', '*BITE*', 'HSSS!!', 'MRRROW!!!'],
     rageQuit: ['GOODBYE!', '*RAGE QUIT*', "I'm outta here!", 'Bye forever!', 'You had your chance!'],
+    dislikePage: ['The cat does not like this page!', 'This page is bad for cats!', 'Cats hate this site!'],
     happy:  ['prrr~', '\u2665', 'mrrr~', ':3', '*purr purr*', '*nuzzle*', '*headbutt*', 'prrrr~'],
   };
 
