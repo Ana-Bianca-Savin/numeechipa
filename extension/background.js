@@ -318,6 +318,12 @@ function processMessage(msg, sender, sendResponse) {
 
   if (msg.type === 'summon') {
     needAttention();
+    // Also sync extra cats on all tabs
+    chrome.tabs.query({}, (tabs) => {
+      for (const tab of tabs) {
+        chrome.tabs.sendMessage(tab.id, { type: 'syncCats' }).catch(() => {});
+      }
+    });
     return;
   }
 
