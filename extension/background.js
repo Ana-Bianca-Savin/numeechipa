@@ -40,8 +40,8 @@ let config = {
   petsNeeded: 3,                // clicks needed to satisfy the cat
 
   // ── Idle behavior (ms) ──
-  idleMinDelay: 5000,           // min idle time before next activity (5s)
-  idleMaxDelay: 15000,          // max idle time before next activity (15s)
+  idleMinDelay: 2000,           // min idle time before next activity (2s)
+  idleMaxDelay: 6000,           // max idle time before next activity (6s)
 
   // ── Walking ──
   walkMinSpeed: 0.8,            // min walk speed multiplier (slower)
@@ -56,6 +56,7 @@ let config = {
 
   // ── Happy state (ms) ──
   happyDuration: 4000,          // how long the cat stays happy after being satisfied
+
 };
 
 let idleTimer = null;
@@ -97,7 +98,6 @@ function enterIdle() {
   clearTimeout(activityTimer);
   clearTimeout(patienceTimer);
   clearTimeout(happyTimer);
-
   state.action = 'idle';
   state.sprite = Math.random() < 0.5 ? 'rest' : 'sit';
   // Pick a random static frame for rest/sit
@@ -114,7 +114,7 @@ function enterIdle() {
 function pickActivity() {
   if (state.action !== 'idle') return;
 
-  const choices = ['walk', 'walk', 'sit', 'sit', 'sit', 'sleep', 'sleep', 'sleep', 'eat', 'wash', 'yawn', 'itch'];
+  const choices = ['walk', 'walk', 'walk', 'walk', 'walk', 'sit', 'sleep', 'eat', 'wash', 'yawn', 'itch'];
   const choice = choices[Math.floor(Math.random() * choices.length)];
 
   if (choice === 'walk') {
@@ -150,8 +150,16 @@ function pickActivity() {
   } else {
     state.action = 'activity';
     state.sprite = choice;
-    state.spriteFrame = null;
     state.animStart = Date.now();
+
+    if (choice === 'sit') {
+      // Sit uses a single static frame, like idle rest/sit
+      const frames = SPRITE_INFO.sit ? SPRITE_INFO.sit.frames : 6;
+      state.spriteFrame = Math.floor(Math.random() * frames);
+    } else {
+      state.spriteFrame = null;
+    }
+
     saveState();
 
     const s = SPRITE_INFO[choice];
@@ -174,7 +182,6 @@ function needAttention() {
 
   clearTimeout(idleTimer);
   clearTimeout(activityTimer);
-
   // If was walking, compute final position
   if (state.action === 'walking') {
     const pos = computeWalkPos();

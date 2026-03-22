@@ -7,8 +7,19 @@
     apply(proto) {
 
       proto.enter_activity = function (state) {
-        if (state.sprite === 'sleep' && Math.random() < C.TUNING.sleepBubbleChance) {
-          setTimeout(() => this.showBubble(this.pick(C.MESSAGES.sleep)), C.TUNING.sleepBubbleDelay);
+        const sprite = state.sprite;
+        // Show a bubble for the activity
+        const msgMap = {
+          sleep: C.MESSAGES.sleep,
+          eat:   C.MESSAGES.eat,
+          wash:  C.MESSAGES.wash,
+          yawn:  C.MESSAGES.yawn,
+          itch:  C.MESSAGES.itch,
+          sit:   C.MESSAGES.sit,
+        };
+        const msgs = msgMap[sprite];
+        if (msgs) {
+          setTimeout(() => this.showBubble(this.pick(msgs)), C.TUNING.sleepBubbleDelay);
         }
       };
 

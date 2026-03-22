@@ -104,6 +104,7 @@
       this.countdownEl = document.createElement('div');
       this.countdownEl.id = 'countdown';
       this.shadow.appendChild(this.countdownEl);
+
     }
 
     // ── Events ───────────────────────────────────────────────────────

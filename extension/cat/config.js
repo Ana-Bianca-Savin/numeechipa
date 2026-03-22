@@ -170,13 +170,19 @@
 
   // ── Messages ───────────────────────────────────────────────────────
   const MESSAGES = {
-    idle:   ['*sits*', '*looks around*', 'Mrrp?', '~', '*stretch*'],
-    needy:  ['Pet me!', 'Meow!', 'Hey!', 'Miau!', 'Notice me!', 'Mrrp?', 'Psst!'],
-    angry:  ['PET ME!', 'MEOW!!', 'HEY!!', '*angry meow*', 'MIAU!', 'Acum!'],
-    attack: ['*ATTACK*', 'MIAU!!!', '*paw paw*', 'PET. ME. NOW.'],
-    rageQuit: ['GOODBYE!', '*RAGE QUIT*', 'I\'m outta here!', 'Bye forever!', 'You had your chance!'],
-    happy:  ['Prrr~', '\u2665', 'Mrrr~', ':3'],
-    sleep:  ['zzz...', '*snore*', 'z..z..'],
+    idle:   ['mrrp?', '~', '*blink*', '...', '*tail flick*', '*ear twitch*', 'prr...', '*sniff*'],
+    walk:   ['~', '*sniff sniff*', '*pat pat*', 'mrrp', '*prr*', '*tip tap*'],
+    sit:    ['...', '*purr*', '*blink blink*', '~', 'prr~'],
+    eat:    ['*nom nom*', '*munch*', '*chomp*', '*crunch*', '*lick*'],
+    wash:   ['*lick lick*', '*lick*', '*grooming*', '*wash wash*'],
+    yawn:   ['*yaaawn*', '*mrraaaw*', '*big yawn*', '*stretch*'],
+    itch:   ['*scratch scratch*', '*scritch*', '*wiggle*', '*scratch*'],
+    sleep:  ['zzz...', '*snore*', 'z..z..', 'zzZZzz...', '*purr*'],
+    needy:  ['meow!', 'mrrp?', 'mew!', 'miau!', '*paw tap*', 'mrrow?', 'mew mew!', 'prr?'],
+    angry:  ['MEOW!!', 'MRRROW!!', '*hisss*', 'MIAU!', 'MEW!!', '*growl*', 'HSSS!'],
+    attack: ['*SCRATCH*', 'MIAU!!!', '*paw paw*', '*CHOMP*', '*BITE*', 'HSSS!!', 'MRRROW!!!'],
+    rageQuit: ['*HISS*', 'MRRROW!!!', '*scratch scratch*', '*ANGRY MEOW*', '*door slam*'],
+    happy:  ['prrr~', '\u2665', 'mrrr~', ':3', '*purr purr*', '*nuzzle*', '*headbutt*', 'prrrr~'],
   };
 
   // ── Tuning constants (content-side) ────────────────────────────────

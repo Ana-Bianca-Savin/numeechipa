@@ -8,6 +8,9 @@
 
       // Time-based 2D walking: all tabs compute the same position from the same params
       proto.enter_walking = function (state) {
+        if (Math.random() < 0.4) {
+          this.showBubble(this.pick(C.MESSAGES.walk));
+        }
         this.walkStartX = state.startX != null ? state.startX : this.catX;
         this.walkStartY = state.startY != null ? state.startY : this.catY;
         this.walkTargetX = state.walkTargetX != null ? state.walkTargetX : this.catX;
