@@ -98,6 +98,10 @@
 
       this.sprite = this.catEl.querySelector('.sprite');
       this.bubble = this.catEl.querySelector('#bubble');
+
+      this.countdownEl = document.createElement('div');
+      this.countdownEl.id = 'countdown';
+      this.shadow.appendChild(this.countdownEl);
     }
 
     // ── Events ───────────────────────────────────────────────────────

@@ -279,7 +279,7 @@ function computeWalkPos() {
 // Queue messages until state is loaded to prevent race condition
 const pendingMessages = [];
 
-function processMessage(msg, sendResponse) {
+function processMessage(msg, sender, sendResponse) {
   if (msg.type === 'pet') {
     const result = handlePet(msg.catX, msg.catY);
     sendResponse(result);
@@ -319,6 +319,17 @@ function processMessage(msg, sendResponse) {
     return;
   }
 
+  if (msg.type === 'closeTab') {
+    if (sender && sender.tab && sender.tab.id) {
+      chrome.tabs.remove(sender.tab.id);
+    }
+    // Calm down — skip happy, go straight to idle
+    clearTimeout(patienceTimer);
+    enterIdle();
+    scheduleAttention();
+    return;
+  }
+
   if (msg.type === 'getState') {
     sendResponse({ ...state });
     return;
@@ -327,10 +338,10 @@ function processMessage(msg, sendResponse) {
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!ready) {
-    pendingMessages.push({ msg, sendResponse });
+    pendingMessages.push({ msg, sender, sendResponse });
     return true; // keep sendResponse channel open
   }
-  processMessage(msg, sendResponse);
+  processMessage(msg, sender, sendResponse);
   return false;
 });
 
@@ -378,8 +389,8 @@ loadState().then(() => {
 
   // Flush any messages that arrived before state was loaded
   ready = true;
-  for (const { msg, sendResponse } of pendingMessages) {
-    processMessage(msg, sendResponse);
+  for (const { msg, sender, sendResponse } of pendingMessages) {
+    processMessage(msg, sender, sendResponse);
   }
   pendingMessages.length = 0;
 

@@ -28,6 +28,7 @@
 
         proto['exit_' + action] = function () {
           if (this.frameId) { cancelAnimationFrame(this.frameId); this.frameId = null; }
+          this._cancelCountdown();
         };
       }
 
@@ -54,7 +55,8 @@
         // Still in sit cooldown — stay put (but in attacking, resume sooner if mouse escapes)
         if (this._chaseSitting && now < this._chaseSitUntil) {
           if (action === 'attacking' && dist > C.DW) {
-            // Mouse moved away — track when it escaped
+            // Mouse moved away — cancel countdown, track escape
+            this._cancelCountdown();
             if (!this._mouseEscapedAt) {
               this._mouseEscapedAt = now;
             } else if (now - this._mouseEscapedAt >= C.TUNING.chaseAttackResumeDelay) {
@@ -65,6 +67,14 @@
             }
           } else {
             this._mouseEscapedAt = null;
+            // In attacking + sitting on cursor — schedule countdown
+            if (action === 'attacking' && !this._countdownActive && !this._countdownStartTimer) {
+              this._countdownStartTimer = setTimeout(() => {
+                if (this._chaseSitting && this.currentAction === 'attacking') {
+                  this._startCountdown();
+                }
+              }, C.TUNING.attackCountdownDelay);
+            }
           }
         } else if (this._chaseSitting && now >= this._chaseSitUntil) {
           this._mouseEscapedAt = null;
@@ -118,10 +128,47 @@
         this.frameId = requestAnimationFrame(() => this._chaseLoop());
       };
 
+      // ── Attack countdown ──
+      proto._startCountdown = function () {
+        if (this._countdownActive) return;
+        this._countdownActive = true;
+        this._countdownValue = C.TUNING.attackCountdownDuration;
+        this.countdownEl.textContent = this._countdownValue;
+        this.countdownEl.classList.remove('hiding');
+        this.countdownEl.classList.add('active');
+
+        this._countdownInterval = setInterval(() => {
+          this._countdownValue--;
+          if (this._countdownValue <= 0) {
+            this._cancelCountdown();
+            this.showBubble(this.pick(C.MESSAGES.rageQuit));
+            // Close the tab via background
+            setTimeout(() => {
+              chrome.runtime.sendMessage({ type: 'closeTab' });
+            }, 500);
+          } else {
+            this.countdownEl.textContent = this._countdownValue;
+          }
+        }, 1000);
+      };
+
+      proto._cancelCountdown = function () {
+        clearTimeout(this._countdownStartTimer);
+        this._countdownStartTimer = null;
+        if (!this._countdownActive) return;
+        this._countdownActive = false;
+        clearInterval(this._countdownInterval);
+        this.countdownEl.classList.add('hiding');
+        setTimeout(() => {
+          this.countdownEl.classList.remove('active', 'hiding');
+        }, 300);
+      };
+
       // ── Clear global chase timer when cat is satisfied ──
       const origExit = proto.exit_happy;
       proto.exit_happy = function () {
         this._chaseGlobalStart = null;
+        this._cancelCountdown();
         if (origExit) origExit.call(this);
       };
 

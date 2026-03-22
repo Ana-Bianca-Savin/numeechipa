@@ -122,6 +122,39 @@
       100% { opacity: 0; transform: translateY(-60px) scale(1.5); }
     }
 
+    #countdown {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      width: 120px;
+      height: 120px;
+      background: rgba(20, 0, 0, 0.85);
+      box-shadow: 0 0 40px rgba(200, 0, 0, 0.4), inset 0 0 30px rgba(180, 0, 0, 0.15);
+      border: 2px solid rgba(255, 50, 50, 0.3);
+      border-radius: 16px;
+      color: #ff4444;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 56px;
+      font-weight: 800;
+      z-index: 2147483647;
+      pointer-events: none;
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-shadow: 0 0 20px rgba(255, 0, 0, 0.6);
+    }
+    #countdown.active {
+      display: flex;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    #countdown.hiding {
+      transform: translate(-50%, -50%) scale(0);
+      opacity: 0;
+    }
+
     #cat.purring .sprite {
       animation-name: purr-shake !important;
       animation-duration: 0.12s !important;
@@ -170,6 +203,8 @@
     chaseSitMin: 3000,              // min sit duration after catch or frustration (ms)
     chaseSitMax: 5000,              // max sit duration (ms)
     chaseAttackResumeDelay: 600,    // in attacking: resume chase this fast after mouse escapes (ms)
+    attackCountdownDelay: 1000,     // delay before countdown appears after catching mouse in attack (ms)
+    attackCountdownDuration: 5,     // countdown seconds
     chasePosReportInterval: 500,    // how often to sync position to background (ms)
 
     // ── Petting ──
