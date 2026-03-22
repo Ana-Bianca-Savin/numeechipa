@@ -2,13 +2,13 @@
 // Single source of truth. All tabs compute position from this state.
 
 const SPRITE_INFO = {
-  rest:  { frames: 6,  speed: 0.25 },
-  sit:   { frames: 6,  speed: 0.2  },
-  eat:   { frames: 8,  speed: 0.15 },
-  wash:  { frames: 9,  speed: 0.12 },
-  yawn:  { frames: 8,  speed: 0.15 },
-  sleep: { frames: 2,  speed: 0.5  },
-  itch:  { frames: 11, speed: 0.1  },
+  rest:  { frames: 6,  speed: 0.4  },
+  sit:   { frames: 6,  speed: 0.35 },
+  eat:   { frames: 8,  speed: 0.25 },
+  wash:  { frames: 9,  speed: 0.2  },
+  yawn:  { frames: 8,  speed: 0.25 },
+  sleep: { frames: 2,  speed: 0.8  },
+  itch:  { frames: 11, speed: 0.17 },
 };
 
 let state = {
@@ -22,7 +22,7 @@ let state = {
   walkSpeed: 2,
   // pet
   petCount: 0,
-  petsNeeded: 3,
+  petsNeeded: 6,
   totalPets: 0,
 };
 

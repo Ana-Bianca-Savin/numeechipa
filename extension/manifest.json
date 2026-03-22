@@ -30,6 +30,7 @@
         "cat/attention.js",
         "cat/petting.js",
         "cat/rage.js",
+        "cat/keyboard.js",
         "cat/main.js"
       ],
       "run_at": "document_idle"

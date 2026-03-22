@@ -19,6 +19,7 @@
 
       this.createDOM();
       this.bindEvents();
+      if (this.initKeyboard) this.initKeyboard();
 
       this.catY = window.innerHeight - DH;
 
