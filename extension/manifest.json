@@ -29,6 +29,7 @@
         "cat/activities.js",
         "cat/attention.js",
         "cat/petting.js",
+        "cat/keyboard.js",
         "cat/main.js"
       ],
       "run_at": "document_idle"
