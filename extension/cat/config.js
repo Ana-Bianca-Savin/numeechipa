@@ -181,7 +181,7 @@
     needy:  ['meow!', 'mrrp?', 'mew!', 'miau!', '*paw tap*', 'mrrow?', 'mew mew!', 'prr?'],
     angry:  ['MEOW!!', 'MRRROW!!', '*hisss*', 'MIAU!', 'MEW!!', '*growl*', 'HSSS!'],
     attack: ['*SCRATCH*', 'MIAU!!!', '*paw paw*', '*CHOMP*', '*BITE*', 'HSSS!!', 'MRRROW!!!'],
-    rageQuit: ['*HISS*', 'MRRROW!!!', '*scratch scratch*', '*ANGRY MEOW*', '*door slam*'],
+    rageQuit: ['GOODBYE!', '*RAGE QUIT*', "I'm outta here!", 'Bye forever!', 'You had your chance!'],
     happy:  ['prrr~', '\u2665', 'mrrr~', ':3', '*purr purr*', '*nuzzle*', '*headbutt*', 'prrrr~'],
   };
 
