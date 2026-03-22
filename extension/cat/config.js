@@ -63,7 +63,7 @@
     #cat {
       position: fixed;
       z-index: 2147483647;
-      pointer-events: auto;
+      pointer-events: none;
       cursor: pointer;
       width: ${DW}px;
       height: ${DH}px;

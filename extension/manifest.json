@@ -32,6 +32,7 @@
         "cat/rage.js",
         "cat/keyboard.js",
         "cat/audio.js",
+        "cat/ball.js",
         "cat/main.js"
       ],
       "run_at": "document_idle"
