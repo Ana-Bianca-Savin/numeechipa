@@ -61,6 +61,12 @@
         const done = this.computeWalkPosition();
         this.updatePosition();
 
+        // Check if we have reached the food before the walk is "done"
+        
+        if (this.checkFoodCollision && this.checkFoodCollision()) {
+          return; // Stop the walking loop because we started eating
+        }
+
         if (done) {
           chrome.runtime.sendMessage({ type: 'walkDone', catX: this.catX, catY: this.catY });
           return;
