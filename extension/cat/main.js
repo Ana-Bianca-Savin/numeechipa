@@ -120,24 +120,9 @@
         if (rect.width === 0) return;
         if (e.clientX >= rect.left && e.clientX <= rect.right &&
             e.clientY >= rect.top && e.clientY <= rect.bottom) {
-          // Only pet if not clicking on the ball
           this.onPet();
         }
       }, true);
-
-      // Handle clicks that pass through pointer-events: none
-      document.addEventListener('click', (e) => {
-        const rect = this.catEl.getBoundingClientRect();
-        if (rect.width === 0) return;
-        if (e.clientX >= rect.left && e.clientX <= rect.right &&
-            e.clientY >= rect.top && e.clientY <= rect.bottom) {
-          // Check if it's actually on the cat (circular hitbox)
-          const cx = rect.left + rect.width / 2;
-          const cy = rect.top + rect.height / 2;
-          const dx = e.clientX - cx, dy = e.clientY - cy;
-          if (Math.sqrt(dx * dx + dy * dy) < DW) this.onPet();
-        }
-      }, false);
 
       this.overlay.addEventListener('click', (e) => {
         const rect = this.catEl.getBoundingClientRect();
