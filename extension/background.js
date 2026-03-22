@@ -30,6 +30,7 @@ let config = {
   attentionMinDelay: 3000,
   attentionMaxDelay: 8000,
   patienceDelay: 4000,
+  rageQuitDelay: 5000,
 };
 
 let idleTimer = null;
@@ -37,6 +38,7 @@ let activityTimer = null;
 let attentionTimer = null;
 let patienceTimer = null;
 let happyTimer = null;
+let rageQuitTimer = null;
 
 // ── Persistence ──────────────────────────────────────────────────────
 
@@ -152,6 +154,16 @@ function startAttacking() {
   state.sprite = 'paw';
   state.animStart = Date.now();
   saveState();
+
+  rageQuitTimer = setTimeout(startRageQuit, config.rageQuitDelay);
+}
+
+function startRageQuit() {
+  if (state.action !== 'attacking') return;
+  state.action = 'rageQuit';
+  state.sprite = 'paw';
+  state.animStart = Date.now();
+  saveState();
 }
 
 function handlePet(catX) {
@@ -159,7 +171,7 @@ function handlePet(catX) {
 
   if (catX != null) state.catX = catX;
 
-  if (state.action === 'needy' || state.action === 'hissing' || state.action === 'attacking') {
+  if (state.action === 'needy' || state.action === 'hissing' || state.action === 'attacking' || state.action === 'rageQuit') {
     state.petCount++;
     if (state.petCount >= state.petsNeeded) {
       satisfy();
@@ -167,12 +179,14 @@ function handlePet(catX) {
     }
   }
 
+  clearTimeout(rageQuitTimer);
   saveState();
   return { ...state };
 }
 
 function satisfy() {
   clearTimeout(patienceTimer);
+  clearTimeout(rageQuitTimer);
 
   state.action = 'happy';
   state.sprite = 'sleep';
@@ -229,6 +243,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ...state });
     return false;
   }
+
+  if (msg.type === 'closeTab') {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs.length > 0) {
+        chrome.tabs.remove(tabs[0].id);
+        // Reset cat state to idle after closing the tab
+        enterIdle();
+      }
+    });
+    return false;
+  }
 });
 
 // ── Config live-reload ───────────────────────────────────────────────
@@ -258,6 +283,8 @@ loadState().then(() => {
     patienceTimer = setTimeout(startHissing, config.patienceDelay);
   } else if (state.action === 'hissing') {
     patienceTimer = setTimeout(startAttacking, config.patienceDelay);
+  } else if (state.action === 'attacking') {
+    rageQuitTimer = setTimeout(startRageQuit, config.rageQuitDelay);
   }
   scheduleAttention();
   console.log('[BrowserCat BG] Started, state:', state.action, 'x:', state.catX);

@@ -139,6 +139,7 @@
     needy:  ['Pet me!', 'Meow!', 'Hey!', 'Miau!', 'Notice me!', 'Mrrp?', 'Psst!'],
     angry:  ['PET ME!', 'MEOW!!', 'HEY!!', '*angry meow*', 'MIAU!', 'Acum!'],
     attack: ['*ATTACK*', 'MIAU!!!', '*paw paw*', 'PET. ME. NOW.'],
+    rageQuit: ['GOODBYE!', '*RAGE QUIT*', 'I\'m outta here!', 'Bye forever!', 'You had your chance!'],
     happy:  ['Prrr~', '\u2665', 'Mrrr~', ':3'],
     sleep:  ['zzz...', '*snore*', 'z..z..'],
   };
