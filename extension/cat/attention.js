@@ -14,7 +14,13 @@
         this.showBubble(this.pick(C.MESSAGES.angry));
       };
 
-      proto.enter_attacking = function () {
+      proto.enter_attacking = function (state) {
+        if (state.catX != null) {
+          this.catX = Math.max(0, Math.min(window.innerWidth - C.DW, state.catX));
+        }
+        this.catY = window.innerHeight - C.DH;
+        this.updatePosition();
+
         this.overlay.classList.add('active');
         this.showBubble(this.pick(C.MESSAGES.attack));
         this.attackLoop();

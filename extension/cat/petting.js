@@ -12,8 +12,7 @@
         this.spawnHeart();
         this.showBubble(this.pick(C.MESSAGES.happy));
 
-        // Tell background to handle state change
-        chrome.runtime.sendMessage({ type: 'pet' });
+        chrome.runtime.sendMessage({ type: 'pet', catX: this.catX });
       };
 
       proto.enter_happy = function () {

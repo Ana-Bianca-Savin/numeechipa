@@ -1,6 +1,5 @@
 // ── Cat State Machine Brain ──────────────────────────────────────────
-// All state lives here. Content scripts are dumb renderers.
-// State syncs to all tabs via chrome.storage.local.
+// Single source of truth. All tabs compute position from this state.
 
 const SPRITE_INFO = {
   rest:  { frames: 6,  speed: 0.25 },
@@ -15,6 +14,13 @@ const SPRITE_INFO = {
 let state = {
   action: 'idle',
   sprite: 'rest',
+  catX: 300,
+  animStart: Date.now(),
+  // walk params
+  startX: 300,
+  walkTarget: 300,
+  walkSpeed: 2,
+  // pet
   petCount: 0,
   petsNeeded: 3,
   totalPets: 0,
@@ -56,6 +62,8 @@ function enterIdle() {
 
   state.action = 'idle';
   state.sprite = Math.random() < 0.5 ? 'rest' : 'sit';
+  state.animStart = Date.now();
+  // catX stays where it was
   saveState();
 
   const delay = 2000 + Math.random() * 4000;
@@ -69,13 +77,28 @@ function pickActivity() {
   const choice = choices[Math.floor(Math.random() * choices.length)];
 
   if (choice === 'walk') {
+    // Determine walk parameters (all tabs use these exact values)
+    const margin = 96; // DW
+    const viewW = 1400; // assume reasonable width, clamped per tab
+    state.startX = state.catX;
+    state.walkTarget = margin + Math.random() * (viewW - margin * 2);
+    state.walkSpeed = 1.5 + Math.random() * 1.5;
     state.action = 'walking';
-    state.sprite = 'walk-right'; // content overrides direction locally
+    state.sprite = state.walkTarget > state.catX ? 'walk-right' : 'walk-left';
+    state.animStart = Date.now();
     saveState();
-    activityTimer = setTimeout(enterIdle, 10000); // max walk time
+
+    // Max walk time fallback
+    activityTimer = setTimeout(() => {
+      if (state.action === 'walking') {
+        state.catX = state.walkTarget;
+        enterIdle();
+      }
+    }, 15000);
   } else {
     state.action = 'activity';
     state.sprite = choice;
+    state.animStart = Date.now();
     saveState();
 
     const s = SPRITE_INFO[choice];
@@ -99,9 +122,15 @@ function needAttention() {
   clearTimeout(idleTimer);
   clearTimeout(activityTimer);
 
+  // If was walking, compute final position
+  if (state.action === 'walking') {
+    state.catX = computeWalkX();
+  }
+
   state.action = 'needy';
   state.sprite = 'meow';
   state.petCount = 0;
+  state.animStart = Date.now();
   saveState();
 
   patienceTimer = setTimeout(startHissing, config.patienceDelay);
@@ -111,6 +140,7 @@ function startHissing() {
   if (state.action !== 'needy') return;
   state.action = 'hissing';
   state.sprite = 'hiss';
+  state.animStart = Date.now();
   saveState();
 
   patienceTimer = setTimeout(startAttacking, config.patienceDelay);
@@ -120,22 +150,25 @@ function startAttacking() {
   if (state.action !== 'hissing') return;
   state.action = 'attacking';
   state.sprite = 'paw';
+  state.animStart = Date.now();
   saveState();
 }
 
-function handlePet() {
+function handlePet(catX) {
   state.totalPets++;
+
+  if (catX != null) state.catX = catX;
 
   if (state.action === 'needy' || state.action === 'hissing' || state.action === 'attacking') {
     state.petCount++;
     if (state.petCount >= state.petsNeeded) {
       satisfy();
-      return { ...state, petted: true };
+      return { ...state };
     }
   }
 
   saveState();
-  return { ...state, petted: false };
+  return { ...state };
 }
 
 function satisfy() {
@@ -144,6 +177,7 @@ function satisfy() {
   state.action = 'happy';
   state.sprite = 'sleep';
   state.petCount = 0;
+  state.animStart = Date.now();
   saveState();
 
   happyTimer = setTimeout(() => {
@@ -152,11 +186,22 @@ function satisfy() {
   }, 2500);
 }
 
+// ── Walk position helper ─────────────────────────────────────────────
+
+function computeWalkX() {
+  const elapsed = (Date.now() - state.animStart) / 1000;
+  const speedPerSec = state.walkSpeed * 60;
+  const totalDist = state.walkTarget - state.startX;
+  const dir = Math.sign(totalDist);
+  const traveled = Math.min(speedPerSec * elapsed, Math.abs(totalDist));
+  return state.startX + dir * traveled;
+}
+
 // ── Messages ─────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'pet') {
-    const result = handlePet();
+    const result = handlePet(msg.catX);
     sendResponse(result);
     return false;
   }
@@ -164,6 +209,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'walkDone') {
     if (state.action === 'walking') {
       clearTimeout(activityTimer);
+      state.catX = msg.catX != null ? msg.catX : computeWalkX();
       enterIdle();
     }
     return false;
@@ -196,23 +242,23 @@ chrome.storage.onChanged.addListener((changes) => {
   }
 });
 
-// ── Keep-alive via port connections from content scripts ─────────────
+// ── Keep-alive via port connections ──────────────────────────────────
 
 chrome.runtime.onConnect.addListener(() => {});
 
 // ── Startup ──────────────────────────────────────────────────────────
 
 loadState().then(() => {
-  // On restart, reset transient states to idle
-  if (['idle', 'walking', 'activity', 'happy'].includes(state.action)) {
+  if (['walking', 'activity', 'happy'].includes(state.action)) {
+    if (state.action === 'walking') state.catX = computeWalkX();
     enterIdle();
-  }
-  // If cat was demanding attention, keep that state but restart patience
-  if (state.action === 'needy') {
+  } else if (state.action === 'idle') {
+    enterIdle();
+  } else if (state.action === 'needy') {
     patienceTimer = setTimeout(startHissing, config.patienceDelay);
   } else if (state.action === 'hissing') {
     patienceTimer = setTimeout(startAttacking, config.patienceDelay);
   }
   scheduleAttention();
-  console.log('[BrowserCat BG] Started, state:', state.action);
+  console.log('[BrowserCat BG] Started, state:', state.action, 'x:', state.catX);
 });

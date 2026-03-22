@@ -9,23 +9,18 @@
   class BrowserCat {
     constructor() {
       this.currentAction = null;
-      this.catX = 200;
+      this.catX = 300;
       this.catY = 0;
-      this.targetX = 200;
-      this.walkSpeed = 2;
+      this.frameId = null;
+      this.bubbleTimer = null;
 
       this.mouseX = window.innerWidth / 2;
       this.mouseY = window.innerHeight / 2;
 
-      this.frameId = null;
-      this.bubbleTimer = null;
-
       this.createDOM();
       this.bindEvents();
 
-      this.catX = DW + Math.random() * (window.innerWidth - DW * 2);
       this.catY = window.innerHeight - DH;
-      this.updatePosition();
 
       // Connect to background to keep service worker alive
       this.port = chrome.runtime.connect({ name: 'cat-keepalive' });
@@ -35,20 +30,20 @@
         if (data.catState) this.applyState(data.catState);
       });
 
-      // React to state changes from background
+      // React to all state changes from background
       chrome.storage.onChanged.addListener((changes) => {
-        if (changes.catState) {
+        if (changes.catState && changes.catState.newValue) {
           this.applyState(changes.catState.newValue);
         }
       });
     }
 
-    // ── State application ────────────────────────────────────────────
-    applyState(newState) {
-      if (!newState) return;
+    // ── State application (reactive) ─────────────────────────────────
+    applyState(s) {
+      if (!s) return;
 
       const oldAction = this.currentAction;
-      const newAction = newState.action;
+      const newAction = s.action;
 
       if (oldAction === newAction) return;
 
@@ -56,16 +51,25 @@
       const exitFn = this['exit_' + oldAction];
       if (exitFn) exitFn.call(this);
 
+      // Update position from state (walk/attack compute it locally)
+      if (newAction !== 'walking' && newAction !== 'attacking') {
+        if (s.catX != null) {
+          this.catX = Math.max(0, Math.min(window.innerWidth - DW, s.catX));
+        }
+        this.catY = window.innerHeight - DH;
+        this.updatePosition();
+      }
+
       this.currentAction = newAction;
 
-      // Set sprite (walking overrides locally in enter_walking)
+      // Set sprite with animation sync (walk overrides in enter handler)
       if (newAction !== 'walking') {
-        this.setSprite(newState.sprite);
+        this.setSprite(s.sprite, s.animStart);
       }
 
       // Enter new state
       const enterFn = this['enter_' + newAction];
-      if (enterFn) enterFn.call(this, newState);
+      if (enterFn) enterFn.call(this, s);
     }
 
     // ── DOM ──────────────────────────────────────────────────────────
@@ -100,7 +104,6 @@
         this.mouseY = e.clientY;
       });
 
-      // Capture-phase click on document to bypass shadow DOM issues
       document.addEventListener('click', (e) => {
         const rect = this.catEl.getBoundingClientRect();
         if (rect.width === 0) return;
@@ -133,7 +136,14 @@
     }
 
     // ── Helpers ──────────────────────────────────────────────────────
-    setSprite(name) {
+    setSprite(name, animStart) {
+      // Sync animation frame across tabs using animation-delay
+      if (animStart) {
+        const offset = (Date.now() - animStart) / 1000;
+        this.sprite.style.animationDelay = -offset + 's';
+      } else {
+        this.sprite.style.animationDelay = '0s';
+      }
       this.sprite.className = 'sprite sprite-' + name;
     }
 
