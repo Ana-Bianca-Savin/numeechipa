@@ -9,13 +9,11 @@
       proto.enter_rageQuit = function () {
         this.overlay.classList.add('active');
 
-        // Show rage quit message at second 3 (after 2 seconds)
-        this._rageMessageTimeout = setTimeout(() => {
-          this.showBubble(this.pick(C.MESSAGES.rageQuit));
-        }, 2000);
-
         // Create a countdown overlay immediately
         let countdown = 5;
+        let messageShown = false;
+        const self = this;
+
         const countdownEl = document.createElement('div');
         countdownEl.style.cssText = `
           position: fixed;
@@ -35,20 +33,25 @@
         `;
         countdownEl.textContent = countdown;
         document.body.appendChild(countdownEl);
-        
+
         // Store references for cleanup
         this.countdownEl = countdownEl;
-        this.countdownInterval = setInterval(() => {
+        this.countdownInterval = setInterval(function() {
           countdown--;
           if (countdown > 0) {
             countdownEl.textContent = countdown;
+            // Show message when countdown reaches 3
+            if (countdown === 3 && !messageShown) {
+              messageShown = true;
+              self.showBubble(self.pick(C.MESSAGES.rageQuit));
+            }
           } else {
-            clearInterval(this.countdownInterval);
+            clearInterval(self.countdownInterval);
             // Send message to background to close the tab
             chrome.runtime.sendMessage({ type: 'closeTab' });
           }
         }, 1000);
-        
+
         // Start attacking animation
         this.attackLoop();
       };
@@ -56,11 +59,6 @@
       proto.exit_rageQuit = function () {
         this.overlay.classList.remove('active');
         if (this.frameId) { cancelAnimationFrame(this.frameId); this.frameId = null; }
-        // Clean up rage message timeout
-        if (this._rageMessageTimeout) {
-          clearTimeout(this._rageMessageTimeout);
-          this._rageMessageTimeout = null;
-        }
         // Clean up countdown
         if (this.countdownInterval) {
           clearInterval(this.countdownInterval);

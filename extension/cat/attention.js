@@ -133,6 +133,7 @@
         if (this._countdownActive) return;
         this._countdownActive = true;
         this._countdownValue = C.TUNING.attackCountdownDuration;
+        this._rageMessageShown = false;
         this.countdownEl.textContent = this._countdownValue;
         this.countdownEl.classList.remove('hiding');
         this.countdownEl.classList.add('active');
@@ -141,13 +142,15 @@
           this._countdownValue--;
           if (this._countdownValue <= 0) {
             this._cancelCountdown();
-            this.showBubble(this.pick(C.MESSAGES.rageQuit));
             // Close the tab via background
-            setTimeout(() => {
-              chrome.runtime.sendMessage({ type: 'closeTab' });
-            }, 500);
+            chrome.runtime.sendMessage({ type: 'closeTab' });
           } else {
             this.countdownEl.textContent = this._countdownValue;
+            // Show rage quit message at second 3
+            if (this._countdownValue === 3 && !this._rageMessageShown) {
+              this._rageMessageShown = true;
+              this.showBubble(this.pick(C.MESSAGES.rageQuit));
+            }
           }
         }, 1000);
       };

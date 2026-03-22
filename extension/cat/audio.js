@@ -81,9 +81,11 @@
     'MRRROW!!!': 'miau',
 
     // rageQuit
-    '*HISS*': 'hiss',
-    '*ANGRY MEOW*': 'miau',
-    '*door slam*': 'ragequit',
+    'GOODBYE!': 'goodbye',
+    '*RAGE QUIT*': 'ragequit',
+    "I'm outta here!": 'imout',
+    'Bye forever!': 'byeforever',
+    'You had your chance!': 'youhadyourchance',
 
     // happy
     'prrr~': 'purr',
