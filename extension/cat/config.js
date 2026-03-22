@@ -26,6 +26,14 @@
     '67-mirrored': { frames: 2,  speed: 0.3 },
   };
 
+  const C = window.CAT = window.CAT || {};
+
+  C.FISH_TYPES = [
+    { url: chrome.runtime.getURL('sprites/fish1.png'), width: 48, height: 48 },
+    { url: chrome.runtime.getURL('sprites/fish2.png'), width: 48, height: 48 },
+    { url: chrome.runtime.getURL('sprites/fish3.png'), width: 48, height: 48 }
+  ];
+
   for (const [name, s] of Object.entries(SPRITES)) {
     s.url = chrome.runtime.getURL(`sprites/${name}.png`);
   }

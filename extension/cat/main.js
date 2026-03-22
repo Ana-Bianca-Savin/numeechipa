@@ -48,12 +48,10 @@
 
       if (oldAction === newAction) return;
 
-      // Exit old state
       const exitFn = this['exit_' + oldAction];
       if (exitFn) exitFn.call(this);
 
-      // Position: skip on local→local transitions (preserves chase position)
-      const localStates = ['walking', 'needy', 'hissing', 'attacking'];
+      const localStates = ['walking', 'needy', 'hissing', 'attacking', 'eating'];
       const wasLocal = localStates.includes(oldAction);
       const isLocal = localStates.includes(newAction);
 
@@ -68,13 +66,20 @@
       }
 
       this.currentAction = newAction;
-
-      // Sprite: always set from state (enter functions may override)
       this.setSprite(s.sprite, s.animStart, s.spriteFrame);
 
-      // Enter new state
       const enterFn = this['enter_' + newAction];
       if (enterFn) enterFn.call(this, s);
+    }
+
+    enter_eating(s) {
+      this.setSprite('eat');
+      this.showBubble("Nom nom nom...");
+      //if (this.playMeow) this.playMeow(); 
+    }
+
+    exit_eating() {
+      // to do 
     }
 
     // ── DOM ──────────────────────────────────────────────────────────

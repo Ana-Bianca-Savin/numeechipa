@@ -24,8 +24,9 @@
       "matches": ["<all_urls>"],
       "js": [
         "cat/config.js",
+        "cat/food.js",
         "cat/idle.js",
-        "cat/walk.js",
+        "cat/walk.js",  
         "cat/activities.js",
         "cat/attention.js",
         "cat/petting.js",
@@ -40,7 +41,12 @@
   "permissions": ["storage", "tabs"],
   "web_accessible_resources": [
     {
-      "resources": ["sprites/*.png", "audio/*.ogg"],
+      "resources": [
+        "sprites/*.png",
+        "cat/*.mp3",
+        "audio/*.ogg",
+        "cat/*.ogg"
+      ],
       "matches": ["<all_urls>"]
     }
   ]
